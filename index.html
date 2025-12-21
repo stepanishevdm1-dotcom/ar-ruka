@@ -14,25 +14,46 @@ body {
   margin: 0;
   overflow: hidden;
   background: black;
-  font-family: sans-serif;
 }
 
+/* Камера = фон */
+#camera {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/* Видео в AR */
 #videoBox {
   position: absolute;
-  top: 200px;
-  left: 200px;
   width: 320px;
-  touch-action: none;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
 }
 
-video {
+#videoBox video {
   width: 100%;
   border-radius: 12px;
 }
 
+/* Canvas для руки */
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 3;
+}
+
+/* Панель */
 #panel {
   position: fixed;
-  top: 10px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0,0,0,0.6);
@@ -40,14 +61,7 @@ video {
   padding: 10px 14px;
   border-radius: 20px;
   font-size: 14px;
-  z-index: 10;
-}
-
-canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 2;
+  z-index: 4;
 }
 
 #fileInput {
@@ -58,98 +72,102 @@ canvas {
 
 <body>
 
-<!-- Камера -->
-<video id="inputVideo" autoplay muted playsinline style="display:none"></video>
-<canvas id="output"></canvas>
+<!-- Задняя камера -->
+<video id="camera" autoplay muted playsinline></video>
 
-<!-- Видео в пространстве -->
+<!-- AR видео -->
 <div id="videoBox">
   <video id="video" loop playsinline></video>
 </div>
 
-<!-- Панель -->
-<div id="panel">
-  <button onclick="fileInput.click()">📁 Загрузить видео</button>
-  <span style="margin-left:10px">✊ play | ✋ pause</span>
-</div>
+<!-- Рука -->
+<canvas id="output"></canvas>
 
+<!-- UI -->
+<div id="panel">
+  <button onclick="fileInput.click()">📁 Видео</button>
+  ✊ держу | ✋ отпустил
+</div>
 <input type="file" id="fileInput" accept="video/*">
 
 <script>
+const cam = document.getElementById("camera");
 const video = document.getElementById("video");
 const box = document.getElementById("videoBox");
 const canvas = document.getElementById("output");
 const ctx = canvas.getContext("2d");
 const fileInput = document.getElementById("fileInput");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-let grabbing = false;
+canvas.width = innerWidth;
+canvas.height = innerHeight;
 
 // Загрузка видео
-fileInput.addEventListener("change", e => {
+fileInput.onchange = e => {
   const file = e.target.files[0];
   if (!file) return;
   video.src = URL.createObjectURL(file);
   video.play();
-});
+};
 
-// MediaPipe Hands
+let grabbed = false;
+let offsetX = 0;
+let offsetY = 0;
+
+// MediaPipe
 const hands = new Hands({
-  locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
 });
 
 hands.setOptions({
   maxNumHands: 1,
-  modelComplexity: 1,
   minDetectionConfidence: 0.7,
   minTrackingConfidence: 0.7
 });
 
-hands.onResults(results => {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+hands.onResults(res => {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  if (results.multiHandLandmarks.length > 0) {
-    const lm = results.multiHandLandmarks[0];
+  if (!res.multiHandLandmarks.length) return;
 
-    drawConnectors(ctx, lm, HAND_CONNECTIONS, {color:"#00ff00"});
-    drawLandmarks(ctx, lm, {color:"#ff0000"});
+  const lm = res.multiHandLandmarks[0];
+  drawConnectors(ctx, lm, HAND_CONNECTIONS, {color:"#00ff00"});
+  drawLandmarks(ctx, lm, {color:"#ff0000"});
 
-    const palm = lm[0];
-    const thumb = lm[4];
-    const index = lm[8];
+  const palm = lm[0];
+  const thumb = lm[4];
+  const index = lm[8];
 
-    const dx = thumb.x - index.x;
-    const dy = thumb.y - index.y;
-    const dist = Math.sqrt(dx*dx + dy*dy);
+  const pinch = Math.hypot(thumb.x-index.x, thumb.y-index.y) < 0.05;
 
-    const x = palm.x * window.innerWidth;
-    const y = palm.y * window.innerHeight;
+  const x = palm.x * innerWidth;
+  const y = palm.y * innerHeight;
 
-    if (dist < 0.05) {
-      video.play();
-      grabbing = true;
-    } else {
-      video.pause();
-      grabbing = false;
-    }
+  if (pinch && !grabbed) {
+    grabbed = true;
+    offsetX = x - box.offsetLeft;
+    offsetY = y - box.offsetTop;
+    video.play();
+  }
 
-    if (grabbing) {
-      box.style.left = (x - box.offsetWidth / 2) + "px";
-      box.style.top = (y - box.offsetHeight / 2) + "px";
-    }
+  if (!pinch && grabbed) {
+    grabbed = false;
+    video.pause();
+  }
+
+  if (grabbed) {
+    box.style.left = (x - offsetX) + "px";
+    box.style.top  = (y - offsetY) + "px";
   }
 });
 
-// 🔥 ЗАДНЯЯ КАМЕРА
-const camera = new Camera(document.getElementById("inputVideo"), {
+// Камера (ЗАДНЯЯ)
+const camera = new Camera(cam, {
   onFrame: async () => {
-    await hands.send({ image: inputVideo });
+    await hands.send({ image: cam });
   },
+  facingMode: "environment",
   width: 1280,
-  height: 720,
-  facingMode: "environment"
+  height: 720
 });
 
 camera.start();
