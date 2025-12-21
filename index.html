@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Hand Control Video</title>
+<title>Hand AR Video</title>
 
 <!-- MediaPipe -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
@@ -22,7 +22,7 @@ body {
   top: 200px;
   left: 200px;
   width: 320px;
-  cursor: grab;
+  touch-action: none;
 }
 
 video {
@@ -30,49 +30,72 @@ video {
   border-radius: 12px;
 }
 
-#info {
+#panel {
   position: fixed;
-  bottom: 10px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
-  color: white;
   background: rgba(0,0,0,0.6);
-  padding: 10px 16px;
+  color: white;
+  padding: 10px 14px;
   border-radius: 20px;
   font-size: 14px;
+  z-index: 10;
 }
+
 canvas {
   position: fixed;
   top: 0;
   left: 0;
+  z-index: 2;
+}
+
+#fileInput {
+  display: none;
 }
 </style>
 </head>
 
 <body>
 
+<!-- Камера -->
 <video id="inputVideo" autoplay muted playsinline style="display:none"></video>
 <canvas id="output"></canvas>
 
+<!-- Видео в пространстве -->
 <div id="videoBox">
-  <video id="video" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" loop></video>
+  <video id="video" loop playsinline></video>
 </div>
 
-<div id="info">
-✋ ладонь — пауза | ✊ кулак — play | двигай рукой
+<!-- Панель -->
+<div id="panel">
+  <button onclick="fileInput.click()">📁 Загрузить видео</button>
+  <span style="margin-left:10px">✊ play | ✋ pause</span>
 </div>
+
+<input type="file" id="fileInput" accept="video/*">
 
 <script>
 const video = document.getElementById("video");
 const box = document.getElementById("videoBox");
 const canvas = document.getElementById("output");
 const ctx = canvas.getContext("2d");
-
-let grabbing = false;
+const fileInput = document.getElementById("fileInput");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+let grabbing = false;
+
+// Загрузка видео
+fileInput.addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  video.src = URL.createObjectURL(file);
+  video.play();
+});
+
+// MediaPipe Hands
 const hands = new Hands({
   locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
 });
@@ -90,8 +113,8 @@ hands.onResults(results => {
   if (results.multiHandLandmarks.length > 0) {
     const lm = results.multiHandLandmarks[0];
 
-    drawConnectors(ctx, lm, HAND_CONNECTIONS, {color:"#00FF00"});
-    drawLandmarks(ctx, lm, {color:"#FF0000"});
+    drawConnectors(ctx, lm, HAND_CONNECTIONS, {color:"#00ff00"});
+    drawLandmarks(ctx, lm, {color:"#ff0000"});
 
     const palm = lm[0];
     const thumb = lm[4];
@@ -119,12 +142,14 @@ hands.onResults(results => {
   }
 });
 
+// 🔥 ЗАДНЯЯ КАМЕРА
 const camera = new Camera(document.getElementById("inputVideo"), {
   onFrame: async () => {
-    await hands.send({image: inputVideo});
+    await hands.send({ image: inputVideo });
   },
-  width: 640,
-  height: 480
+  width: 1280,
+  height: 720,
+  facingMode: "environment"
 });
 
 camera.start();
