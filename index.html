@@ -2,8 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Hand AR Video (Fixed)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AR Видео + Рука</title>
 
+<!-- MediaPipe -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
@@ -16,8 +18,19 @@ html,body{
   background:black;
 }
 
-/* Камера */
-#camera {
+/* ===== AR SCREEN ===== */
+#arScreen{
+  position:fixed;
+  inset:0;
+  display:none;
+}
+
+#arScreen.active{
+  display:block;
+}
+
+/* Камера как фон */
+#arCamera{
   position:fixed;
   inset:0;
   width:100vw;
@@ -26,7 +39,7 @@ html,body{
   z-index:0;
 }
 
-/* AR-видео */
+/* Видео в AR */
 #videoBox{
   position:absolute;
   width:320px;
@@ -40,7 +53,7 @@ html,body{
   border-radius:12px;
 }
 
-/* Canvas руки */
+/* Рука */
 #handCanvas{
   position:fixed;
   inset:0;
@@ -49,119 +62,138 @@ html,body{
 }
 
 /* UI */
-#panel{
+#backBtn{
   position:fixed;
-  bottom:12px;
-  left:50%;
-  transform:translateX(-50%);
+  top:20px;
+  left:20px;
   z-index:4;
+  padding:12px 18px;
   background:rgba(0,0,0,.6);
   color:white;
-  padding:10px 14px;
+  border:none;
   border-radius:20px;
-  font-size:14px;
 }
-#fileInput{display:none;}
 </style>
 </head>
 
 <body>
 
-<video id="camera" autoplay muted playsinline></video>
+<!-- ===== AR SCREEN ===== -->
+<div id="arScreen">
 
-<div id="videoBox">
-  <video id="video" loop playsinline></video>
+  <video id="arCamera" autoplay muted playsinline></video>
+
+  <div id="videoBox">
+    <video id="arVideo" loop playsinline></video>
+  </div>
+
+  <canvas id="handCanvas"></canvas>
+
+  <button id="backBtn">← Назад</button>
 </div>
-
-<canvas id="handCanvas"></canvas>
-
-<div id="panel">
-  <button onclick="fileInput.click()">📁 Видео</button>
-  ✊ двигать | ✋ оставить
-</div>
-<input type="file" id="fileInput" accept="video/*">
 
 <script>
-const cam = document.getElementById("camera");
-const box = document.getElementById("videoBox");
-const video = document.getElementById("video");
+/* ========= VIDEO ========= */
+let currentVideoUrl = null;
+const arVideo = document.getElementById("arVideo");
+
+/* ========= SCREEN ========= */
+const arScreen = document.getElementById("arScreen");
+document.getElementById("backBtn").onclick = ()=>{
+  stopAR();
+};
+
+/* ========= START / STOP ========= */
+function startAR(videoUrl){
+  currentVideoUrl = videoUrl;
+  arVideo.src = videoUrl;
+  arVideo.play();
+  arScreen.classList.add("active");
+  startCamera();
+}
+function stopAR(){
+  arScreen.classList.remove("active");
+  arVideo.pause();
+  camera.stop();
+}
+
+/* ========= CAMERA ========= */
+const camVideo = document.getElementById("arCamera");
+
+const camera = new Camera(camVideo,{
+  facingMode:"environment",
+  width:1280,
+  height:720,
+  onFrame:async()=>{
+    await hands.send({image:camVideo});
+  }
+});
+
+/* ========= HAND TRACKING ========= */
 const canvas = document.getElementById("handCanvas");
 const ctx = canvas.getContext("2d");
-const fileInput = document.getElementById("fileInput");
-
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-// загрузка видео
-fileInput.onchange = e=>{
-  const f = e.target.files[0];
-  if(!f) return;
-  video.src = URL.createObjectURL(f);
-  video.play();
-};
+const box = document.getElementById("videoBox");
 
 let grabbed=false;
-let grabDX=0, grabDY=0;
+let dx=0, dy=0;
 
-// MediaPipe
 const hands = new Hands({
   locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
 });
 
 hands.setOptions({
   maxNumHands:1,
-  minDetectionConfidence:.7,
-  minTrackingConfidence:.7
+  minDetectionConfidence:0.7,
+  minTrackingConfidence:0.7
 });
 
-hands.onResults(r=>{
+hands.onResults(res=>{
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(!r.multiHandLandmarks.length) return;
+  if(!res.multiHandLandmarks.length) return;
 
-  const lm=r.multiHandLandmarks[0];
+  const lm = res.multiHandLandmarks[0];
   drawConnectors(ctx,lm,HAND_CONNECTIONS,{color:"#00ff00"});
   drawLandmarks(ctx,lm,{color:"#ff0000"});
 
-  const palm=lm[0];
-  const thumb=lm[4];
-  const index=lm[8];
+  const palm = lm[0];
+  const thumb = lm[4];
+  const index = lm[8];
 
-  const pinch=Math.hypot(
+  const pinch = Math.hypot(
     thumb.x-index.x,
     thumb.y-index.y
-  )<0.045;
+  ) < 0.045;
 
-  const x=palm.x*innerWidth;
-  const y=palm.y*innerHeight;
+  const x = palm.x * innerWidth;
+  const y = palm.y * innerHeight;
 
   if(pinch && !grabbed){
     grabbed=true;
-    grabDX=x-box.offsetLeft;
-    grabDY=y-box.offsetTop;
-    video.play();
+    dx = x - box.offsetLeft;
+    dy = y - box.offsetTop;
+    arVideo.play();
   }
-
   if(!pinch && grabbed){
     grabbed=false;
-    video.pause();
+    arVideo.pause();
   }
-
   if(grabbed){
-    box.style.left=(x-grabDX)+"px";
-    box.style.top =(y-grabDY)+"px";
+    box.style.left = (x-dx)+"px";
+    box.style.top  = (y-dy)+"px";
   }
 });
 
-// задняя камера
-const camera = new Camera(cam,{
-  facingMode:"environment",
-  width:1280,
-  height:720,
-  onFrame:async()=>{
-    await hands.send({image:cam});
-  }
-});
-camera.start();
+/* ========= CAMERA CONTROL ========= */
+function startCamera(){
+  camera.start();
+}
+
+/* ========= DEMO START ========= */
+/* вместо этого ты подставляешь currentVideoUrl из своего загрузчика */
+startAR("https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4");
 </script>
 
 </body>
