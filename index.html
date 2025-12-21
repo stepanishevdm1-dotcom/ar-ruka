@@ -2,174 +2,165 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Hand AR Video</title>
+<title>Hand AR Video (Fixed)</title>
 
-<!-- MediaPipe -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
 <style>
-body {
-  margin: 0;
-  overflow: hidden;
-  background: black;
+html,body{
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:black;
 }
 
-/* Камера = фон */
+/* Камера */
 #camera {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  z-index: 0;
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100vh;
+  object-fit:cover;
+  z-index:0;
 }
 
-/* Видео в AR */
-#videoBox {
-  position: absolute;
-  width: 320px;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 2;
+/* AR-видео */
+#videoBox{
+  position:absolute;
+  width:320px;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  z-index:2;
+}
+#videoBox video{
+  width:100%;
+  border-radius:12px;
 }
 
-#videoBox video {
-  width: 100%;
-  border-radius: 12px;
+/* Canvas руки */
+#handCanvas{
+  position:fixed;
+  inset:0;
+  z-index:3;
+  pointer-events:none;
 }
 
-/* Canvas для руки */
-canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 3;
+/* UI */
+#panel{
+  position:fixed;
+  bottom:12px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:4;
+  background:rgba(0,0,0,.6);
+  color:white;
+  padding:10px 14px;
+  border-radius:20px;
+  font-size:14px;
 }
-
-/* Панель */
-#panel {
-  position: fixed;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.6);
-  color: white;
-  padding: 10px 14px;
-  border-radius: 20px;
-  font-size: 14px;
-  z-index: 4;
-}
-
-#fileInput {
-  display: none;
-}
+#fileInput{display:none;}
 </style>
 </head>
 
 <body>
 
-<!-- Задняя камера -->
 <video id="camera" autoplay muted playsinline></video>
 
-<!-- AR видео -->
 <div id="videoBox">
   <video id="video" loop playsinline></video>
 </div>
 
-<!-- Рука -->
-<canvas id="output"></canvas>
+<canvas id="handCanvas"></canvas>
 
-<!-- UI -->
 <div id="panel">
   <button onclick="fileInput.click()">📁 Видео</button>
-  ✊ держу | ✋ отпустил
+  ✊ двигать | ✋ оставить
 </div>
 <input type="file" id="fileInput" accept="video/*">
 
 <script>
 const cam = document.getElementById("camera");
-const video = document.getElementById("video");
 const box = document.getElementById("videoBox");
-const canvas = document.getElementById("output");
+const video = document.getElementById("video");
+const canvas = document.getElementById("handCanvas");
 const ctx = canvas.getContext("2d");
 const fileInput = document.getElementById("fileInput");
 
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-// Загрузка видео
-fileInput.onchange = e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  video.src = URL.createObjectURL(file);
+// загрузка видео
+fileInput.onchange = e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  video.src = URL.createObjectURL(f);
   video.play();
 };
 
-let grabbed = false;
-let offsetX = 0;
-let offsetY = 0;
+let grabbed=false;
+let grabDX=0, grabDY=0;
 
 // MediaPipe
 const hands = new Hands({
-  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+  locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
 });
 
 hands.setOptions({
-  maxNumHands: 1,
-  minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.7
+  maxNumHands:1,
+  minDetectionConfidence:.7,
+  minTrackingConfidence:.7
 });
 
-hands.onResults(res => {
+hands.onResults(r=>{
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!r.multiHandLandmarks.length) return;
 
-  if (!res.multiHandLandmarks.length) return;
+  const lm=r.multiHandLandmarks[0];
+  drawConnectors(ctx,lm,HAND_CONNECTIONS,{color:"#00ff00"});
+  drawLandmarks(ctx,lm,{color:"#ff0000"});
 
-  const lm = res.multiHandLandmarks[0];
-  drawConnectors(ctx, lm, HAND_CONNECTIONS, {color:"#00ff00"});
-  drawLandmarks(ctx, lm, {color:"#ff0000"});
+  const palm=lm[0];
+  const thumb=lm[4];
+  const index=lm[8];
 
-  const palm = lm[0];
-  const thumb = lm[4];
-  const index = lm[8];
+  const pinch=Math.hypot(
+    thumb.x-index.x,
+    thumb.y-index.y
+  )<0.045;
 
-  const pinch = Math.hypot(thumb.x-index.x, thumb.y-index.y) < 0.05;
+  const x=palm.x*innerWidth;
+  const y=palm.y*innerHeight;
 
-  const x = palm.x * innerWidth;
-  const y = palm.y * innerHeight;
-
-  if (pinch && !grabbed) {
-    grabbed = true;
-    offsetX = x - box.offsetLeft;
-    offsetY = y - box.offsetTop;
+  if(pinch && !grabbed){
+    grabbed=true;
+    grabDX=x-box.offsetLeft;
+    grabDY=y-box.offsetTop;
     video.play();
   }
 
-  if (!pinch && grabbed) {
-    grabbed = false;
+  if(!pinch && grabbed){
+    grabbed=false;
     video.pause();
   }
 
-  if (grabbed) {
-    box.style.left = (x - offsetX) + "px";
-    box.style.top  = (y - offsetY) + "px";
+  if(grabbed){
+    box.style.left=(x-grabDX)+"px";
+    box.style.top =(y-grabDY)+"px";
   }
 });
 
-// Камера (ЗАДНЯЯ)
-const camera = new Camera(cam, {
-  onFrame: async () => {
-    await hands.send({ image: cam });
-  },
-  facingMode: "environment",
-  width: 1280,
-  height: 720
+// задняя камера
+const camera = new Camera(cam,{
+  facingMode:"environment",
+  width:1280,
+  height:720,
+  onFrame:async()=>{
+    await hands.send({image:cam});
+  }
 });
-
 camera.start();
 </script>
 
