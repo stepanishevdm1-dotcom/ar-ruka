@@ -1,134 +1,873 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Web Beat Saber</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-
-<style>
-body { margin:0; overflow:hidden; background:black; }
-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; display:block; }
-#score { position:fixed; top:20px; left:20px; color:white; font-size:24px; font-family:sans-serif; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Beat Saber Web</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #0a0a0a;
+            color: white;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        #videoContainer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            height: 240px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 2;
+            background: #000;
+        }
+        
+        #inputVideo {
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1); /* Зеркальное отображение для естественного восприятия */
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #score {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+        }
+        
+        #combo {
+            font-size: 24px;
+            color: #ffaa00;
+            margin-bottom: 20px;
+        }
+        
+        #message {
+            font-size: 18px;
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        #startButton {
+            background: linear-gradient(45deg, #ff0080, #00ff88);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: transform 0.2s;
+        }
+        
+        #startButton:hover {
+            transform: scale(1.05);
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 2;
+            backdrop-filter: blur(5px);
+        }
+        
+        .hand-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin: 0 5px;
+        }
+        
+        #leftHandIndicator {
+            background-color: #ff0080;
+            box-shadow: 0 0 10px #ff0080;
+        }
+        
+        #rightHandIndicator {
+            background-color: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: white;
+            z-index: 10;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/libs/stats.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 </head>
 <body>
+    <div id="container">
+        <div id="ui">
+            <div id="score">0</div>
+            <div id="combo">Combo: 0</div>
+            <div id="message">Загружаю детектор рук...</div>
+            <button id="startButton">СТАРТ ИГРЫ</button>
+        </div>
+        
+        <div id="videoContainer">
+            <video id="inputVideo" autoplay playsinline></video>
+        </div>
+        
+        <div id="instructions">
+            <span>Управление: </span>
+            <span class="hand-indicator" id="leftHandIndicator"></span> Левая рука
+            <span style="margin: 0 10px">|</span>
+            <span class="hand-indicator" id="rightHandIndicator"></span> Правая рука
+            <div style="margin-top: 5px; font-size: 14px; color: #aaa">
+                Размахивайте руками, чтобы резать кубы!
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+    </div>
 
-<video id="video" autoplay playsinline style="display:none"></video>
-<canvas id="canvas"></canvas>
-<div id="score">Score: 0</div>
-
-<script>
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-let handPos = {x: null, y: null};
-let score = 0;
-
-// ==== MediaPipe Hands ====
-const hands = new Hands({locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
-hands.setOptions({
-  maxNumHands: 1,
-  modelComplexity: 1,
-  minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.7
-});
-
-hands.onResults(results => {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // Рисуем ладонь
-  if(results.multiHandLandmarks.length > 0){
-    const lm = results.multiHandLandmarks[0];
-    drawConnectors(ctx, lm, HAND_CONNECTIONS, {color:"#00FF00", lineWidth:4});
-    drawLandmarks(ctx, lm, {color:"#FF0000", lineWidth:2});
-
-    // Используем ладонь (landmark 0) для коллизий
-    handPos.x = lm[0].x * canvas.width;
-    handPos.y = lm[0].y * canvas.height;
-  } else {
-    handPos.x = null;
-    handPos.y = null;
-  }
-});
-
-// ==== Камера ====
-const camera = new Camera(video, {
-  onFrame: async () => { await hands.send({image: video}); },
-  width: 1280,
-  height: 720,
-  facingMode: "environment"
-});
-camera.start();
-
-// ==== Кубы ====
-const cubes = [];
-const cubeSize = 60;
-const spawnInterval = 1000; // мс
-let lastSpawn = Date.now();
-
-function spawnCube(){
-  const x = Math.random() * (canvas.width - cubeSize);
-  const y = -cubeSize;
-  cubes.push({x, y});
-}
-
-// ==== Анимация ====
-function update(){
-  // Спавн кубов
-  if(Date.now() - lastSpawn > spawnInterval){
-    spawnCube();
-    lastSpawn = Date.now();
-  }
-
-  // Обновление кубов
-  for(let i = cubes.length-1; i>=0; i--){
-    const cube = cubes[i];
-    cube.y += 5; // скорость падения
-
-    // Проверка коллизии с рукой
-    if(handPos.x !== null && handPos.y !== null){
-      if(handPos.x > cube.x && handPos.x < cube.x + cubeSize &&
-         handPos.y > cube.y && handPos.y < cube.y + cubeSize){
-        cubes.splice(i,1);
-        score++;
-        document.getElementById('score').textContent = 'Score: ' + score;
-        continue;
-      }
-    }
-
-    // Удаляем кубы за экраном
-    if(cube.y > canvas.height) cubes.splice(i,1);
-  }
-}
-
-// ==== Рендеринг ====
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // Кубы
-  cubes.forEach(cube => {
-    ctx.fillStyle = '#4CC9F0';
-    ctx.fillRect(cube.x, cube.y, cubeSize, cubeSize);
-  });
-
-  requestAnimationFrame(draw);
-}
-
-// ==== Цикл игры ====
-function gameLoop(){
-  update();
-  requestAnimationFrame(gameLoop);
-}
-
-draw();
-gameLoop();
-
-</script>
+    <script>
+        // Основные константы и переменные
+        let scene, camera, renderer, controls;
+        let hands, cameraInstance;
+        let gameStarted = false;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let missedCubes = 0;
+        let cubes = [];
+        let sabers = { left: null, right: null };
+        let trails = { left: null, right: null };
+        let lastCutTime = 0;
+        let cubeSpawnInterval = null;
+        let gameStartTime = 0;
+        
+        // Элементы DOM
+        const scoreElement = document.getElementById('score');
+        const comboElement = document.getElementById('combo');
+        const messageElement = document.getElementById('message');
+        const startButton = document.getElementById('startButton');
+        const leftHandIndicator = document.getElementById('leftHandIndicator');
+        const rightHandIndicator = document.getElementById('rightHandIndicator');
+        const videoElement = document.getElementById('inputVideo');
+        
+        // Цвета
+        const COLORS = {
+            RED: 0xff0080,
+            BLUE: 0x0080ff,
+            GREEN: 0x00ff88,
+            PURPLE: 0x8000ff,
+            ORANGE: 0xff8000,
+            SABER_LEFT: 0xff0080,
+            SABER_RIGHT: 0x00ff88,
+            TRAIL_LEFT: 0xff0080,
+            TRAIL_RIGHT: 0x00ff88,
+            BACKGROUND: 0x0a0a0a
+        };
+        
+        // Конфигурация детектора рук
+        const handsConfig = {
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        };
+        
+        // Инициализация Three.js сцены
+        function initThreeJS() {
+            // Создаем сцену
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(COLORS.BACKGROUND);
+            scene.fog = new THREE.Fog(COLORS.BACKGROUND, 10, 25);
+            
+            // Создаем камеру
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.5, 5);
+            camera.lookAt(0, 1, 0);
+            
+            // Создаем рендерер
+            const canvas = document.getElementById('gameCanvas');
+            renderer = new THREE.WebGLRenderer({ 
+                canvas, 
+                antialias: true,
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // Добавляем освещение
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 7);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(COLORS.SABER_RIGHT, 1, 20);
+            pointLight.position.set(0, 3, 5);
+            scene.add(pointLight);
+            
+            // Добавляем контроль камеры (для отладки)
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enabled = false; // Отключаем, чтобы не мешало игре
+            
+            // Создаем сабли
+            createSaber('left', COLORS.SABER_LEFT);
+            createSaber('right', COLORS.SABER_RIGHT);
+            
+            // Создаем следы от сабель
+            createTrail('left', COLORS.TRAIL_LEFT);
+            createTrail('right', COLORS.TRAIL_RIGHT);
+            
+            // Создаем игровую зону
+            createGameZone();
+            
+            // Обработка изменения размера окна
+            window.addEventListener('resize', onWindowResize);
+            
+            messageElement.textContent = "Детектор рук готов! Нажмите СТАРТ ИГРЫ";
+        }
+        
+        // Создание сабли
+        function createSaber(side, color) {
+            const group = new THREE.Group();
+            
+            // Рукоять сабли
+            const handleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.3, 8);
+            const handleMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x333333,
+                shininess: 100 
+            });
+            const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+            handle.position.y = 0.15;
+            group.add(handle);
+            
+            // Лезвие сабли
+            const bladeGeometry = new THREE.BoxGeometry(0.02, 0.8, 0.02);
+            const bladeMaterial = new THREE.MeshPhongMaterial({ 
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.5,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.9
+            });
+            const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+            blade.position.y = 0.7;
+            group.add(blade);
+            
+            // Свечение лезвия
+            const glowGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.85, 16);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.2,
+                side: THREE.BackSide
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            glow.position.y = 0.675;
+            group.add(glow);
+            
+            scene.add(group);
+            sabers[side] = {
+                group: group,
+                blade: blade,
+                glow: glow,
+                position: new THREE.Vector3(),
+                velocity: new THREE.Vector3(),
+                lastPosition: new THREE.Vector3(),
+                isDetected: false
+            };
+            
+            // Изначально скрываем сабли
+            group.visible = false;
+        }
+        
+        // Создание следа от сабли
+        function createTrail(side, color) {
+            const trailGeometry = new THREE.BufferGeometry();
+            const trailMaterial = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.6,
+                linewidth: 2
+            });
+            
+            const trail = new THREE.Line(trailGeometry, trailMaterial);
+            scene.add(trail);
+            
+            trails[side] = {
+                line: trail,
+                points: [],
+                maxPoints: 20
+            };
+            
+            trail.visible = false;
+        }
+        
+        // Обновление следа сабли
+        function updateTrail(side, position) {
+            const trail = trails[side];
+            if (!trail || !sabers[side].isDetected) return;
+            
+            // Добавляем новую точку
+            trail.points.unshift(position.clone());
+            
+            // Ограничиваем количество точек
+            if (trail.points.length > trail.maxPoints) {
+                trail.points.pop();
+            }
+            
+            // Обновляем геометрию
+            const positions = new Float32Array(trail.points.length * 3);
+            for (let i = 0; i < trail.points.length; i++) {
+                positions[i * 3] = trail.points[i].x;
+                positions[i * 3 + 1] = trail.points[i].y;
+                positions[i * 3 + 2] = trail.points[i].z;
+            }
+            
+            trail.line.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            trail.line.geometry.attributes.position.needsUpdate = true;
+            trail.line.visible = true;
+        }
+        
+        // Создание игровой зоны
+        function createGameZone() {
+            // Пол
+            const floorGeometry = new THREE.PlaneGeometry(20, 20);
+            const floorMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x222222,
+                shininess: 30,
+                side: THREE.DoubleSide
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = Math.PI / 2;
+            floor.position.y = -0.5;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            // Стены
+            const wallGeometry = new THREE.PlaneGeometry(20, 5);
+            const wallMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x1a1a1a,
+                side: THREE.DoubleSide
+            });
+            
+            const backWall = new THREE.Mesh(wallGeometry, wallMaterial);
+            backWall.position.z = -10;
+            backWall.position.y = 2;
+            scene.add(backWall);
+            
+            // Дорожки для кубов
+            const lanePositions = [-1.5, -0.5, 0.5, 1.5];
+            const laneGeometry = new THREE.BoxGeometry(0.8, 0.01, 20);
+            const laneMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x333333,
+                transparent: true,
+                opacity: 0.3
+            });
+            
+            lanePositions.forEach(x => {
+                const lane = new THREE.Mesh(laneGeometry, laneMaterial);
+                lane.position.x = x;
+                lane.position.z = 0;
+                lane.position.y = 0.5;
+                scene.add(lane);
+            });
+            
+            // Источник кубов
+            const sourceGeometry = new THREE.BoxGeometry(4, 0.5, 0.5);
+            const sourceMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x444444,
+                wireframe: true
+            });
+            const cubeSource = new THREE.Mesh(sourceGeometry, sourceMaterial);
+            cubeSource.position.z = 10;
+            cubeSource.position.y = 1;
+            scene.add(cubeSource);
+        }
+        
+        // Создание летящего куба
+        function createCube() {
+            const colors = [COLORS.RED, COLORS.BLUE, COLORS.GREEN, COLORS.PURPLE];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            const geometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.2,
+                shininess: 100
+            });
+            
+            const cube = new THREE.Mesh(geometry, material);
+            cube.castShadow = true;
+            cube.receiveShadow = true;
+            
+            // Позиционируем куб на случайной дорожке
+            const lanePositions = [-1.5, -0.5, 0.5, 1.5];
+            const lane = lanePositions[Math.floor(Math.random() * lanePositions.length)];
+            
+            cube.position.x = lane;
+            cube.position.y = 1;
+            cube.position.z = 10; // Начинаем далеко
+            
+            // Определяем, какой рукой нужно резать
+            cube.userData = {
+                targetHand: lane < 0 ? 'left' : 'right',
+                color: color,
+                speed: 0.1 + Math.random() * 0.05,
+                direction: new THREE.Vector3(0, 0, -1),
+                spawnTime: Date.now(),
+                isActive: true
+            };
+            
+            scene.add(cube);
+            cubes.push(cube);
+            
+            return cube;
+        }
+        
+        // Инициализация детектора рук
+        async function initHandDetection() {
+            hands = new Hands(handsConfig);
+            
+            hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            
+            hands.onResults(onHandResults);
+            
+            // Запускаем камеру
+            cameraInstance = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({ image: videoElement });
+                },
+                width: 640,
+                height: 480
+            });
+            
+            try {
+                await cameraInstance.start();
+                messageElement.textContent = "Камера запущена! Нажмите СТАРТ ИГРЫ";
+            } catch (error) {
+                messageElement.textContent = "Ошибка доступа к камере: " + error.message;
+                console.error("Camera error:", error);
+            }
+        }
+        
+        // Обработка результатов детекции рук
+        function onHandResults(results) {
+            if (!gameStarted) return;
+            
+            // Сбросить состояние обнаружения
+            sabers.left.isDetected = false;
+            sabers.right.isDetected = false;
+            leftHandIndicator.style.backgroundColor = '#555';
+            rightHandIndicator.style.backgroundColor = '#555';
+            
+            if (results.multiHandLandmarks && results.multiHandedness) {
+                for (let i = 0; i < Math.min(results.multiHandLandmarks.length, 2); i++) {
+                    const landmarks = results.multiHandLandmarks[i];
+                    const handedness = results.multiHandedness[i].label; // "Left" или "Right"
+                    
+                    // Конвертируем координаты MediaPipe в координаты Three.js
+                    // MediaPipe: x,y,z от 0 до 1, где (0,0) - левый верхний угол
+                    // Three.js: x - слева направо, y - снизу вверх, z - вглубь
+                    
+                    const wrist = landmarks[0]; // Запястье
+                    const indexKnuckle = landmarks[5]; // Костяшка указательного пальца
+                    
+                    // Преобразуем координаты
+                    const x = (wrist.x - 0.5) * 4; // Масштабируем для игрового поля
+                    const y = (0.5 - wrist.y) * 3; // Инвертируем Y и масштабируем
+                    const z = wrist.z * 2; // Глубина
+                    
+                    const handKey = handedness.toLowerCase(); // "left" или "right"
+                    
+                    if (sabers[handKey]) {
+                        // Обновляем позицию сабли
+                        const saber = sabers[handKey];
+                        const newPosition = new THREE.Vector3(x, y + 0.5, z - 2);
+                        
+                        // Рассчитываем скорость
+                        saber.velocity.subVectors(newPosition, saber.position).multiplyScalar(0.3);
+                        saber.lastPosition.copy(saber.position);
+                        saber.position.copy(newPosition);
+                        
+                        // Обновляем позицию и вращение сабли
+                        saber.group.position.copy(saber.position);
+                        
+                        // Вращаем саблю в направлении движения
+                        if (saber.velocity.length() > 0.01) {
+                            saber.group.lookAt(saber.position.clone().add(saber.velocity));
+                        }
+                        
+                        // Обновляем след
+                        updateTrail(handKey, saber.position.clone().add(new THREE.Vector3(0, 0.5, 0)));
+                        
+                        saber.isDetected = true;
+                        saber.group.visible = true;
+                        
+                        // Обновляем индикатор
+                        if (handKey === 'left') {
+                            leftHandIndicator.style.backgroundColor = '#ff0080';
+                            leftHandIndicator.style.boxShadow = '0 0 10px #ff0080';
+                        } else {
+                            rightHandIndicator.style.backgroundColor = '#00ff88';
+                            rightHandIndicator.style.boxShadow = '0 0 10px #00ff88';
+                        }
+                        
+                        // Проверяем коллизии с кубами
+                        checkCollisions(handKey);
+                    }
+                }
+            }
+            
+            // Скрываем необнаруженные сабли
+            if (!sabers.left.isDetected) {
+                sabers.left.group.visible = false;
+                trails.left.line.visible = false;
+            }
+            if (!sabers.right.isDetected) {
+                sabers.right.group.visible = false;
+                trails.right.line.visible = false;
+            }
+        }
+        
+        // Проверка коллизий с кубами
+        function checkCollisions(handKey) {
+            const saber = sabers[handKey];
+            if (!saber || !saber.isDetected) return;
+            
+            // Используем сферу для проверки коллизий
+            const saberSphere = new THREE.Sphere(saber.position, 0.5);
+            
+            for (let i = cubes.length - 1; i >= 0; i--) {
+                const cube = cubes[i];
+                if (!cube.userData.isActive) continue;
+                
+                // Проверяем, подходящая ли это рука для этого куба
+                if (cube.userData.targetHand !== handKey) continue;
+                
+                // Проверяем расстояние
+                const cubeSphere = new THREE.Sphere(cube.position, 0.5);
+                
+                if (saberSphere.intersectsSphere(cubeSphere)) {
+                    // Проверяем скорость удара
+                    const saberSpeed = saber.velocity.length();
+                    
+                    if (saberSpeed > 0.1) { // Минимальная скорость для засчитывания удара
+                        cutCube(cube, handKey);
+                        cubes.splice(i, 1);
+                    }
+                }
+            }
+        }
+        
+        // Обработка разрезания куба
+        function cutCube(cube, handKey) {
+            cube.userData.isActive = false;
+            
+            // Увеличиваем комбо и счет
+            combo++;
+            score += 10 * combo;
+            
+            if (combo > maxCombo) {
+                maxCombo = combo;
+            }
+            
+            // Обновляем UI
+            scoreElement.textContent = score;
+            comboElement.textContent = `Combo: ${combo} (Max: ${maxCombo})`;
+            comboElement.style.color = combo >= 10 ? '#ffaa00' : '#00ff88';
+            
+            // Визуальные эффекты при разрезании
+            const color = cube.userData.color;
+            
+            // Взрыв частиц
+            createParticleExplosion(cube.position, color);
+            
+            // Звуковой эффект (вибрация вместо звука)
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+            
+            // Удаляем куб со сцены
+            scene.remove(cube);
+            
+            lastCutTime = Date.now();
+        }
+        
+        // Создание взрыва частиц
+        function createParticleExplosion(position, color) {
+            const particleCount = 20;
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            
+            for (let i = 0; i < particleCount; i++) {
+                const x = (Math.random() - 0.5) * 0.5;
+                const y = (Math.random() - 0.5) * 0.5;
+                const z = (Math.random() - 0.5) * 0.5;
+                vertices.push(x, y, z);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: color,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const particles = new THREE.Points(geometry, material);
+            particles.position.copy(position);
+            scene.add(particles);
+            
+            // Анимация частиц
+            const particleData = [];
+            for (let i = 0; i < particleCount; i++) {
+                particleData.push({
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.2,
+                        (Math.random() - 0.5) * 0.2,
+                        (Math.random() - 0.5) * 0.2
+                    ),
+                    life: 1.0
+                });
+            }
+            
+            function animateParticles() {
+                let allDead = true;
+                const positions = particles.geometry.attributes.position.array;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const data = particleData[i];
+                    if (data.life > 0) {
+                        allDead = false;
+                        data.life -= 0.05;
+                        
+                        positions[i * 3] += data.velocity.x;
+                        positions[i * 3 + 1] += data.velocity.y;
+                        positions[i * 3 + 2] += data.velocity.z;
+                        
+                        data.velocity.y -= 0.01; // Гравитация
+                    }
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true;
+                material.opacity -= 0.02;
+                
+                if (allDead || material.opacity <= 0) {
+                    scene.remove(particles);
+                    return;
+                }
+                
+                requestAnimationFrame(animateParticles);
+            }
+            
+            animateParticles();
+        }
+        
+        // Запуск игры
+        function startGame() {
+            if (gameStarted) return;
+            
+            gameStarted = true;
+            gameStartTime = Date.now();
+            score = 0;
+            combo = 0;
+            missedCubes = 0;
+            
+            // Очищаем старые кубы
+            cubes.forEach(cube => scene.remove(cube));
+            cubes = [];
+            
+            // Обновляем UI
+            scoreElement.textContent = "0";
+            comboElement.textContent = "Combo: 0 (Max: 0)";
+            comboElement.style.color = '#00ff88';
+            messageElement.textContent = "Игра началась! Режьте кубы!";
+            startButton.textContent = "ПЕРЕЗАПУСТИТЬ ИГРУ";
+            
+            // Запускаем спавн кубов
+            if (cubeSpawnInterval) clearInterval(cubeSpawnInterval);
+            cubeSpawnInterval = setInterval(() => {
+                if (gameStarted) {
+                    createCube();
+                    
+                    // Постепенно увеличиваем сложность
+                    if (Date.now() - gameStartTime > 30000) { // После 30 секунд
+                        createCube(); // Два куба за раз
+                    }
+                    if (Date.now() - gameStartTime > 60000) { // После 60 секунд
+                        createCube(); // Три куба за раз
+                    }
+                }
+            }, 1000); // Спавним куб каждую секунду
+            
+            // Обновляем статус индикаторов рук
+            leftHandIndicator.style.backgroundColor = '#555';
+            rightHandIndicator.style.backgroundColor = '#555';
+        }
+        
+        // Остановка игры
+        function stopGame() {
+            gameStarted = false;
+            
+            if (cubeSpawnInterval) {
+                clearInterval(cubeSpawnInterval);
+                cubeSpawnInterval = null;
+            }
+            
+            messageElement.textContent = `Игра окончена! Счет: ${score}, Макс. комбо: ${maxCombo}`;
+            startButton.textContent = "НАЧАТЬ ЗАНОВО";
+        }
+        
+        // Обновление игровой логики
+        function updateGame() {
+            if (!gameStarted) return;
+            
+            const currentTime = Date.now();
+            
+            // Обновляем кубы
+            for (let i = cubes.length - 1; i >= 0; i--) {
+                const cube = cubes[i];
+                
+                // Двигаем куб
+                cube.position.add(cube.userData.direction.clone().multiplyScalar(cube.userData.speed));
+                
+                // Проверяем, не улетел ли куб слишком далеко
+                if (cube.position.z < -10) {
+                    // Кубы, которые улетели за игрока
+                    cube.userData.isActive = false;
+                    scene.remove(cube);
+                    cubes.splice(i, 1);
+                    
+                    missedCubes++;
+                    combo = 0; // Сбрасываем комбо при пропуске
+                    comboElement.textContent = `Combo: 0 (Max: ${maxCombo})`;
+                    comboElement.style.color = '#00ff88';
+                    
+                    // Заканчиваем игру при слишком большом количестве пропусков
+                    if (missedCubes >= 10) {
+                        stopGame();
+                    }
+                }
+            }
+            
+            // Автоматическое окончание игры через 90 секунд
+            if (currentTime - gameStartTime > 90000) {
+                stopGame();
+            }
+        }
+        
+        // Анимационный цикл
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updateGame();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Обработка изменения размера окна
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Инициализация при загрузке страницы
+        async function init() {
+            try {
+                // Инициализируем Three.js
+                initThreeJS();
+                
+                // Инициализируем детектор рук
+                await initHandDetection();
+                
+                // Запускаем анимационный цикл
+                animate();
+                
+                // Назначаем обработчик кнопки
+                startButton.addEventListener('click', startGame);
+                
+                // Добавляем обработчик клавиши пробела для старта игры
+                document.addEventListener('keydown', (event) => {
+                    if (event.code === 'Space') {
+                        event.preventDefault();
+                        startGame();
+                    }
+                });
+                
+                messageElement.textContent = "Готово! Нажмите СТАРТ ИГРЫ или ПРОБЕЛ для начала";
+                
+            } catch (error) {
+                console.error("Initialization error:", error);
+                messageElement.textContent = "Ошибка инициализации: " + error.message;
+            }
+        }
+        
+        // Запускаем инициализацию при загрузке страницы
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
 </body>
 </html>
