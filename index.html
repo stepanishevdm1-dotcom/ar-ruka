@@ -242,6 +242,28 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.1);
         }
+        
+        /* Простая кнопка управления для теста */
+        #testControls {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .test-btn {
+            background: rgba(255,255,255,0.9);
+            color: #2c3e50;
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -250,6 +272,14 @@
     <div id="videoTime">00:00 / 00:00</div>
     <div id="gestureStatus">✋ Откройте ладонь</div>
     <div id="placeBtn">🎬 Разместить видео</div>
+    
+    <!-- Тестовые кнопки для отладки -->
+    <div id="testControls" style="display: none;">
+        <button class="test-btn" onclick="testButtonClick('play')">▶ Play</button>
+        <button class="test-btn" onclick="testButtonClick('pause')">⏸ Pause</button>
+        <button class="test-btn" onclick="testButtonClick('volume')">🔊 Volume</button>
+    </div>
+    
     <div class="loading-spinner" id="loadingSpinner"></div>
     
     <div id="handIndicator">
@@ -272,11 +302,12 @@
         arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;' 
         vr-mode-ui="enabled: false"
         id="arScene"
-        renderer="antialias: true; alpha: true">
+        renderer="antialias: true; alpha: true"
+        stats>
         
-        <!-- Камера A-Frame -->
-        <a-entity camera look-controls="enabled: false">
-        </a-entity>
+        <!-- Камера A-Frame с фиксированной позицией -->
+        <a-camera id="mainCamera" position="0 1.6 0" look-controls="enabled: false" wasd-controls="enabled: false">
+        </a-camera>
         
         <!-- Свет -->
         <a-entity light="type: ambient; color: #666; intensity: 0.8"></a-entity>
@@ -318,9 +349,8 @@
         let handDetected = false;
         let handGesture = 'open';
         let lastGestureTime = 0;
-        let isGrabbingVideo = false;
         let isPickingVideo = false;
-        let lastIndexTip = null;
+        let pinchStartTime = 0;
         
         // Настройка размеров канваса
         handCanvas.width = window.innerWidth;
@@ -335,7 +365,7 @@
             maxNumHands: 1,
             modelComplexity: 1,
             minDetectionConfidence: 0.7,
-            minTrackingConfidence: 0.7,
+            minTrackingConfidence: 0.5,
             selfieMode: false
         });
         
@@ -356,15 +386,22 @@
                 if (newGesture !== handGesture) {
                     handGesture = newGesture;
                     updateGestureStatus();
+                    
+                    // Обрабатываем изменение жеста
+                    handleGestureChange(newGesture, landmarks);
                 }
                 
-                // Обрабатываем взаимодействия
-                handleHandInteractions(landmarks);
+                // Если держим жест щепотки, перемещаем видео
+                if (handGesture === 'pinch' && isPickingVideo && videoContainer) {
+                    moveVideoWithHand(landmarks);
+                }
+                
+                // Проверяем взаимодействие с кнопками
+                checkButtonInteractions(landmarks);
                 
             } else {
                 handDetected = false;
                 handGesture = 'none';
-                isGrabbingVideo = false;
                 isPickingVideo = false;
                 updateGestureStatus();
             }
@@ -374,28 +411,190 @@
         function detectGestures(landmarks) {
             const thumbTip = landmarks[4];
             const indexTip = landmarks[8];
-            const middleTip = landmarks[12];
             
             // Расстояние между большим и указательным пальцами
-            const thumbIndexDist = getDistance3D(thumbTip, indexTip);
+            const thumbIndexDist = getDistance2D(thumbTip, indexTip);
             
-            // Расстояние между указательным и средним пальцами
-            const indexMiddleDist = getDistance3D(indexTip, middleTip);
-            
-            if (thumbIndexDist < 0.05 && indexMiddleDist < 0.05) {
-                return 'fist';
-            } else if (thumbIndexDist < 0.03) {
+            // Порог для определения щепотки
+            if (thumbIndexDist < 0.05) {
                 return 'pinch';
-            } else {
-                return 'open';
+            }
+            
+            // Проверяем, сжата ли рука в кулак
+            const middleTip = landmarks[12];
+            const ringTip = landmarks[16];
+            const pinkyTip = landmarks[20];
+            const wrist = landmarks[0];
+            
+            const fingersToWrist = [
+                getDistance2D(indexTip, wrist),
+                getDistance2D(middleTip, wrist),
+                getDistance2D(ringTip, wrist),
+                getDistance2D(pinkyTip, wrist)
+            ];
+            
+            // Если все пальцы близко к запястью - это кулак
+            const allFingersClosed = fingersToWrist.every(dist => dist < 0.2);
+            
+            if (allFingersClosed) {
+                return 'fist';
+            }
+            
+            return 'open';
+        }
+        
+        function getDistance2D(p1, p2) {
+            const dx = p1.x - p2.x;
+            const dy = p1.y - p2.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        // Обработка изменения жеста
+        function handleGestureChange(newGesture, landmarks) {
+            const currentTime = Date.now();
+            
+            switch(newGesture) {
+                case 'fist':
+                    // Воспроизведение при жесте кулака
+                    if (currentTime - lastGestureTime > 800) {
+                        if (videoEl && videoEl.paused) {
+                            videoEl.play();
+                            startTimeUpdate();
+                            console.log("Play gesture detected");
+                        }
+                        lastGestureTime = currentTime;
+                    }
+                    break;
+                    
+                case 'open':
+                    // Пауза при открытой ладони
+                    if (currentTime - lastGestureTime > 800) {
+                        if (videoEl && !videoEl.paused) {
+                            videoEl.pause();
+                            console.log("Pause gesture detected");
+                        }
+                        lastGestureTime = currentTime;
+                    }
+                    break;
+                    
+                case 'pinch':
+                    // Начинаем перенос видео
+                    if (!isPickingVideo && videoContainer) {
+                        isPickingVideo = true;
+                        pinchStartTime = currentTime;
+                        console.log("Start picking video");
+                    }
+                    break;
+                    
+                default:
+                    isPickingVideo = false;
             }
         }
         
-        function getDistance3D(p1, p2) {
-            const dx = p1.x - p2.x;
-            const dy = p1.y - p2.y;
-            const dz = (p1.z || 0) - (p2.z || 0);
-            return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        // Перемещение видео с помощью руки
+        function moveVideoWithHand(landmarks) {
+            const indexTip = landmarks[8];
+            
+            // Получаем позицию указательного пальца в экранных координатах
+            const screenX = indexTip.x * handCanvas.width;
+            const screenY = indexTip.y * handCanvas.height;
+            
+            // Конвертируем в нормализованные координаты (-1 до 1)
+            const normalizedX = (screenX / handCanvas.width) * 2 - 1;
+            const normalizedY = -(screenY / handCanvas.height) * 2 + 1;
+            
+            // Получаем камеру
+            const cameraEl = document.querySelector('#mainCamera');
+            if (!cameraEl) return;
+            
+            const camera = cameraEl.getObject3D('camera');
+            if (!camera) return;
+            
+            // Создаем луч из камеры
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2(normalizedX, normalizedY);
+            
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Находим точку на расстоянии 2 метра от камеры
+            const distance = 2;
+            const direction = raycaster.ray.direction;
+            const cameraPos = camera.position;
+            
+            // Новая позиция для видео
+            const newPosition = new THREE.Vector3(
+                cameraPos.x + direction.x * distance,
+                cameraPos.y + direction.y * distance,
+                cameraPos.z + direction.z * distance
+            );
+            
+            // Плавно перемещаем видео
+            videoContainer.position.lerp(newPosition, 0.3);
+            
+            // Поворачиваем видео к камере
+            videoContainer.lookAt(cameraPos);
+        }
+        
+        // Проверка взаимодействия с кнопками
+        function checkButtonInteractions(landmarks) {
+            if (!videoContainer || !playButton || !pauseButton || !volumeButton) return;
+            
+            const indexTip = landmarks[8];
+            const screenX = indexTip.x * handCanvas.width;
+            const screenY = indexTip.y * handCanvas.height;
+            
+            // Простая проверка: если жест щепотки и палец находится в зоне кнопки
+            if (handGesture === 'pinch') {
+                const currentTime = Date.now();
+                
+                // Проверяем каждую кнопку
+                checkSimpleButtonHit(playButton, screenX, screenY, 'play', currentTime);
+                checkSimpleButtonHit(pauseButton, screenX, screenY, 'pause', currentTime);
+                checkSimpleButtonHit(volumeButton, screenX, screenY, 'toggleVolume', currentTime);
+            }
+        }
+        
+        function checkSimpleButtonHit(button, screenX, screenY, action, currentTime) {
+            // Получаем мировые координаты кнопки
+            const buttonPos = button.getWorldPosition(new THREE.Vector3());
+            
+            // Конвертируем в экранные координаты
+            const cameraEl = document.querySelector('#mainCamera');
+            if (!cameraEl) return;
+            
+            const camera = cameraEl.getObject3D('camera');
+            if (!camera) return;
+            
+            const vector = new THREE.Vector3();
+            vector.copy(buttonPos);
+            vector.project(camera);
+            
+            const buttonScreenX = (vector.x * 0.5 + 0.5) * handCanvas.width;
+            const buttonScreenY = (-vector.y * 0.5 + 0.5) * handCanvas.height;
+            
+            // Расстояние от пальца до кнопки на экране
+            const distance = Math.sqrt(
+                Math.pow(screenX - buttonScreenX, 2) + 
+                Math.pow(screenY - buttonScreenY, 2)
+            );
+            
+            const threshold = 60; // пикселей
+            
+            if (distance < threshold) {
+                if (!button.userData.isHovered) {
+                    button.userData.setHover(true);
+                }
+                
+                // Если держим жест щепотки более 500мс над кнопкой - нажимаем
+                if (handGesture === 'pinch' && currentTime - lastGestureTime > 500) {
+                    executeButtonAction(action);
+                    lastGestureTime = currentTime;
+                }
+            } else {
+                if (button.userData.isHovered) {
+                    button.userData.setHover(false);
+                }
+            }
         }
         
         // Обновление статуса жестов
@@ -409,7 +608,7 @@
                     color = '#2ecc71';
                     break;
                 case 'pinch':
-                    text = isPickingVideo ? '👌 Перенос видео' : '👌 Возьмите видео';
+                    text = isPickingVideo ? '👌 Перенос видео' : '👌 Нажмите кнопку';
                     color = '#3498db';
                     break;
                 case 'open':
@@ -423,146 +622,6 @@
             
             gestureStatus.textContent = text;
             gestureStatus.style.borderColor = color;
-        }
-        
-        // Обработка взаимодействий руки
-        function handleHandInteractions(landmarks) {
-            const indexTip = landmarks[8];
-            const thumbTip = landmarks[4];
-            
-            const currentTime = Date.now();
-            
-            // Обработка жеста кулака для play/pause
-            if (handGesture === 'fist' && currentTime - lastGestureTime > 1000) {
-                if (videoEl) {
-                    if (videoEl.paused) {
-                        videoEl.play();
-                        startTimeUpdate();
-                    } else {
-                        videoEl.pause();
-                    }
-                }
-                lastGestureTime = currentTime;
-            }
-            
-            // Обработка жеста щепотки для переноса видео
-            if (handGesture === 'pinch') {
-                if (!isPickingVideo) {
-                    // Начинаем перенос
-                    isPickingVideo = true;
-                    lastIndexTip = indexTip;
-                }
-                
-                // Если видео размещено, перемещаем его
-                if (videoContainer && isPlaced && isPickingVideo) {
-                    const screenX = indexTip.x * handCanvas.width;
-                    const screenY = indexTip.y * handCanvas.height;
-                    
-                    // Конвертируем экранные координаты в мировые
-                    const worldPos = screenToWorld(screenX, screenY, 1.5);
-                    
-                    if (worldPos) {
-                        videoContainer.position.copy(worldPos);
-                        
-                        // Обновляем вращение видео, чтобы оно смотрело на камеру
-                        if (scene.camera) {
-                            const cameraPos = scene.camera.position;
-                            videoContainer.lookAt(cameraPos);
-                        }
-                    }
-                }
-            } else {
-                isPickingVideo = false;
-            }
-            
-            // Проверяем нажатие на кнопки
-            if (videoContainer && isPlaced) {
-                checkButtonInteractions(indexTip);
-            }
-        }
-        
-        // Проверка взаимодействия с кнопками
-        function checkButtonInteractions(indexTip) {
-            if (!playButton || !pauseButton || !volumeButton) return;
-            
-            const screenX = indexTip.x * handCanvas.width;
-            const screenY = indexTip.y * handCanvas.height;
-            
-            // Проверяем каждую кнопку
-            checkButtonHover(playButton, screenX, screenY, 'play');
-            checkButtonHover(pauseButton, screenX, screenY, 'pause');
-            checkButtonHover(volumeButton, screenX, screenY, 'toggleVolume');
-        }
-        
-        function checkButtonHover(button, screenX, screenY, action) {
-            // Получаем мировые координаты кнопки
-            const buttonWorldPos = button.getWorldPosition(new THREE.Vector3());
-            
-            // Конвертируем мировые координаты в экранные
-            const camera = scene.camera;
-            const screenPos = worldToScreen(buttonWorldPos, camera);
-            
-            if (!screenPos) return;
-            
-            // Проверяем расстояние в экранных координатах
-            const distance = Math.sqrt(
-                Math.pow(screenX - screenPos.x, 2) + 
-                Math.pow(screenY - screenPos.y, 2)
-            );
-            
-            const threshold = 40; // пикселей
-            
-            if (distance < threshold) {
-                if (!button.userData.isHovered) {
-                    button.userData.setHover(true);
-                    
-                    // Если рука находится над кнопкой и мы делаем жест щепотки, нажимаем кнопку
-                    if (handGesture === 'pinch') {
-                        executeButtonAction(action);
-                    }
-                }
-            } else {
-                if (button.userData.isHovered) {
-                    button.userData.setHover(false);
-                }
-            }
-        }
-        
-        // Конвертация мировых координат в экранные
-        function worldToScreen(worldPos, camera) {
-            const vector = new THREE.Vector3();
-            vector.copy(worldPos);
-            
-            // Проекция на экран
-            vector.project(camera);
-            
-            return {
-                x: (vector.x * 0.5 + 0.5) * handCanvas.width,
-                y: (-vector.y * 0.5 + 0.5) * handCanvas.height
-            };
-        }
-        
-        // Конвертация экранных координат в мировые
-        function screenToWorld(screenX, screenY, depth) {
-            const camera = scene.camera;
-            if (!camera) return null;
-            
-            // Нормализуем координаты
-            const x = (screenX / handCanvas.width) * 2 - 1;
-            const y = -(screenY / handCanvas.height) * 2 + 1;
-            
-            // Создаем луч из камеры
-            const vector = new THREE.Vector3(x, y, 0.5);
-            vector.unproject(camera);
-            
-            const direction = vector.sub(camera.position).normalize();
-            
-            // Вычисляем позицию на заданной глубине
-            const worldPos = camera.position.clone().add(
-                direction.multiplyScalar(depth)
-            );
-            
-            return worldPos;
         }
         
         // Инициализация MediaPipe камеры
@@ -580,6 +639,7 @@
                 });
                 
                 mediaPipeCamera.start();
+                console.log("MediaPipe initialized");
             } catch (error) {
                 console.error('Error initializing MediaPipe:', error);
             }
@@ -610,7 +670,6 @@
                     }
                 };
                 
-                // Получаем новый поток с выбранной камерой
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 
                 // Обновляем видеоэлемент AR.js
@@ -726,6 +785,8 @@
                 videoTexture.magFilter = THREE.LinearFilter;
                 videoTexture.format = THREE.RGBAFormat;
                 
+                console.log("Video loaded:", videoEl.videoWidth, "x", videoEl.videoHeight);
+                
             } catch (error) {
                 console.error('Error loading video:', error);
             } finally {
@@ -754,17 +815,26 @@
             }
         }
         
-        // Размещение видео
+        // Размещение видео - КЛЮЧЕВАЯ ФУНКЦИЯ
         placeBtn.addEventListener('click', () => {
             if(!videoEl || !videoTexture) {
                 alert('Пожалуйста, сначала выберите видео файл');
                 return;
             }
             
-            const camera = scene.camera;
-            const distance = 1.5;
+            const cameraEl = document.querySelector('#mainCamera');
+            if (!cameraEl) {
+                console.error("Camera not found");
+                return;
+            }
             
-            // Если видео уже размещено, просто обновляем позицию
+            const camera = cameraEl.getObject3D('camera');
+            const cameraPos = camera ? camera.position.clone() : new THREE.Vector3(0, 1.6, 0);
+            const cameraDirection = camera ? camera.getWorldDirection(new THREE.Vector3()) : new THREE.Vector3(0, 0, -1);
+            
+            const distance = 2; // 2 метра перед камерой
+            
+            // Создаем или обновляем контейнер видео
             if (!videoContainer) {
                 videoContainer = new THREE.Group();
                 scene.object3D.add(videoContainer);
@@ -781,15 +851,18 @@
                 videoContainer.add(videoMesh);
                 
                 createButtons();
+                
+                console.log("Video container created and added to scene");
             }
             
             // Позиционируем видео перед камерой
-            const cameraPos = camera.position.clone();
-            const direction = camera.getWorldDirection(new THREE.Vector3());
-            
-            videoContainer.position.copy(
-                cameraPos.clone().add(direction.multiplyScalar(distance))
+            const newPosition = new THREE.Vector3(
+                cameraPos.x + cameraDirection.x * distance,
+                cameraPos.y + cameraDirection.y * distance,
+                cameraPos.z + cameraDirection.z * distance
             );
+            
+            videoContainer.position.copy(newPosition);
             
             // Поворачиваем видео к камере
             videoContainer.lookAt(cameraPos);
@@ -805,13 +878,15 @@
             
             isPlaced = true;
             placeBtn.textContent = '📌 Переместить видео';
+            
+            console.log("Video placed at position:", videoContainer.position);
         });
         
         // Создание кнопок
         function createButtons() {
-            if (playButton) videoContainer.remove(playButton);
-            if (pauseButton) videoContainer.remove(pauseButton);
-            if (volumeButton) videoContainer.remove(volumeButton);
+            if (playButton && playButton.parent) videoContainer.remove(playButton);
+            if (pauseButton && pauseButton.parent) videoContainer.remove(pauseButton);
+            if (volumeButton && volumeButton.parent) videoContainer.remove(volumeButton);
             
             const buttonY = -videoHeight/2 - 0.15;
             const buttonSpacing = videoWidth * 0.25;
@@ -823,6 +898,8 @@
             videoContainer.add(playButton);
             videoContainer.add(pauseButton);
             videoContainer.add(volumeButton);
+            
+            console.log("Buttons created");
         }
         
         function createModernButton(id, x, y, z, color, icon, action, size = 0.08) {
@@ -831,7 +908,8 @@
                 id: id, 
                 action: action,
                 originalColor: new THREE.Color(color),
-                isHovered: false
+                isHovered: false,
+                lastClickTime: 0
             };
             
             const buttonGeometry = new THREE.CylinderGeometry(size, size, 0.02, 32);
@@ -876,6 +954,8 @@
             buttonGroup.position.set(x, y, z);
             
             buttonGroup.userData.setHover = function(isHovering) {
+                if (this.userData.isHovered === isHovering) return;
+                
                 this.userData.isHovered = isHovering;
                 glowMesh.visible = isHovering;
                 
@@ -922,11 +1002,17 @@
         }
         
         function executeButtonAction(action) {
+            const currentTime = Date.now();
+            
+            // Защита от слишком частых нажатий
+            if (currentTime - lastGestureTime < 300) return;
+            
             switch(action) {
                 case 'play':
                     if(videoEl) {
                         videoEl.play().then(() => {
                             startTimeUpdate();
+                            console.log("Play button clicked");
                         }).catch(e => console.log('Play error:', e));
                         
                         if(playButton) {
@@ -941,6 +1027,7 @@
                 case 'pause':
                     if(videoEl) {
                         videoEl.pause();
+                        console.log("Pause button clicked");
                         
                         if(pauseButton) {
                             pauseButton.children[1].material.emissive.setHex(0x666666);
@@ -954,6 +1041,8 @@
                 case 'toggleVolume':
                     if(videoEl) {
                         videoEl.muted = !videoEl.muted;
+                        console.log("Volume toggle:", videoEl.muted ? "muted" : "unmuted");
+                        
                         if(volumeButton) {
                             const iconMesh = volumeButton.children[2];
                             const canvas = createButtonIcon(videoEl.muted ? '🔇' : '🔊', 90);
@@ -968,7 +1057,14 @@
                     }
                     break;
             }
+            
+            lastGestureTime = currentTime;
         }
+        
+        // Тестовая функция для проверки кнопок
+        window.testButtonClick = function(action) {
+            executeButtonAction(action);
+        };
         
         // Масштабирование пальцами
         let startDistance = null;
@@ -1034,12 +1130,25 @@
                 case 'p':
                     // Тест переноса видео
                     if (videoContainer) {
-                        const camera = scene.camera;
-                        const newPos = camera.position.clone().add(
-                            camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(2)
+                        const cameraEl = document.querySelector('#mainCamera');
+                        const camera = cameraEl.getObject3D('camera');
+                        const cameraPos = camera.position.clone();
+                        const direction = camera.getWorldDirection(new THREE.Vector3());
+                        
+                        const newPos = new THREE.Vector3(
+                            cameraPos.x + direction.x * 3,
+                            cameraPos.y + direction.y * 3,
+                            cameraPos.z + direction.z * 3
                         );
+                        
                         videoContainer.position.copy(newPos);
+                        videoContainer.lookAt(cameraPos);
                     }
+                    break;
+                case 't':
+                    // Показать/скрыть тестовые кнопки
+                    document.getElementById('testControls').style.display = 
+                        document.getElementById('testControls').style.display === 'none' ? 'flex' : 'none';
                     break;
             }
         });
@@ -1065,6 +1174,7 @@
         window.addEventListener('load', () => {
             setTimeout(() => {
                 initializeMediaPipe();
+                console.log("App initialized");
             }, 1000);
         });
         
