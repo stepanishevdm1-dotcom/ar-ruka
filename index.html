@@ -2,13 +2,9 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR Видео с жестами пальцев</title>
+    <title>AR Видео с жестами</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <!-- TensorFlow.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
-    <!-- Handpose модель -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7/dist/handpose.min.js"></script>
     <style>
         body { 
             margin:0; 
@@ -102,69 +98,23 @@
             box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
         }
         
-        /* Видео с камеры для жестов (скрыто) */
-        #gestureVideo {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            width: 200px;
-            height: 150px;
-            border: 2px solid #3498db;
-            border-radius: 10px;
-            z-index: 80;
-            display: none;
-            object-fit: cover;
-        }
-        
-        /* Канвас для отрисовки руки */
-        #handCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 75;
-            pointer-events: none;
-        }
-        
-        /* Информация о жестах */
+        /* Компактная информация о жестах */
         .gesture-info {
             position: fixed;
             bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.8);
             color: white;
-            padding: 15px 25px;
-            border-radius: 25px;
-            font-size: 14px;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 12px;
             z-index: 90;
-            backdrop-filter: blur(15px);
-            border: 2px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
             text-align: center;
-            max-width: 400px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        
-        /* Индикатор жестов */
-        .gesture-indicator {
-            position: fixed;
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 5px solid #3498db;
-            background: rgba(52, 152, 219, 0.15);
+            max-width: 250px;
             display: none;
-            z-index: 85;
-            pointer-events: none;
-            animation: pulse 1s infinite;
-            box-shadow: 0 0 30px rgba(52, 152, 219, 0.5);
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
         }
         
         /* Статус жестов */
@@ -173,52 +123,14 @@
             top: 60px;
             right: 15px;
             color: white; 
-            background: rgba(0,0,0,0.8);
-            padding: 10px 15px; 
-            border-radius: 25px;
-            font-size: 13px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 12px; 
+            border-radius: 15px;
+            font-size: 11px;
             z-index: 100;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
-            display: block;
-        }
-        
-        /* Кнопка жестов */
-        #gestureBtn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
-        
-        #gestureBtn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.6);
-        }
-        
-        /* Индикатор руки */
-        .hand-cursor {
-            position: fixed;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 3px solid #4fc3f7;
-            background: rgba(79, 195, 247, 0.25);
-            pointer-events: none;
-            z-index: 80;
             display: none;
-            transition: all 0.1s;
-            box-shadow: 0 0 20px rgba(79, 195, 247, 0.7);
         }
         
         /* Скрытие VR кнопки */
@@ -237,9 +149,9 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255,255,255,0.3);
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
             border-radius: 50%;
             border-top-color: #3498db;
             animation: spin 1s ease-in-out infinite;
@@ -268,20 +180,19 @@
         
         .camera-modal-content {
             background: white;
-            padding: 30px;
+            padding: 20px;
             border-radius: 15px;
-            max-width: 400px;
+            max-width: 350px;
             width: 80%;
             text-align: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
         
         .camera-option {
             background: #3498db;
             color: white;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 10px;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
         }
@@ -294,9 +205,9 @@
         .close-modal {
             background: #e74c3c;
             color: white;
-            padding: 10px 20px;
-            margin-top: 15px;
-            border-radius: 10px;
+            padding: 8px 16px;
+            margin-top: 12px;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
             display: inline-block;
@@ -306,93 +217,46 @@
             background: #c0392b;
         }
         
-        /* Дебаг информация */
-        .debug-info {
-            position: fixed;
-            top: 170px;
-            right: 15px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: 11px;
-            z-index: 100;
-            display: none;
-            max-width: 200px;
-        }
-        
-        /* Кнопка дебага */
-        #debugBtn {
+        /* Кнопка помощи */
+        #helpBtn {
             position: fixed;
             bottom: 80px;
             right: 20px;
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            background: rgba(0,0,0,0.7);
             color: white;
-            padding: 10px 15px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 11px;
             cursor: pointer;
-            border: none;
-            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
-            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
             z-index: 100;
+            backdrop-filter: blur(5px);
         }
         
-        #debugBtn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
+        #helpBtn:hover {
+            background: rgba(0,0,0,0.8);
         }
     </style>
 </head>
 <body>
     <input type="file" id="fileInput" accept="video/*">
-    <button id="cameraBtn">📷 Сменить камеру</button>
-    <button id="gestureBtn">👋 Включить жесты</button>
-    <button id="debugBtn">🐛 Дебаг жестов</button>
+    <button id="cameraBtn">📷 Камера</button>
+    <button id="helpBtn">❔ Жесты</button>
     <div id="videoTime">00:00 / 00:00</div>
     <div id="placeBtn">🎬 Разместить видео</div>
     <div class="loading-spinner" id="loadingSpinner"></div>
     
-    <!-- Видео с камеры для жестов -->
-    <video id="gestureVideo" autoplay muted playsinline></video>
-    
-    <!-- Канвас для отрисовки руки -->
-    <canvas id="handCanvas"></canvas>
-    
-    <!-- Индикатор жестов -->
-    <div class="gesture-indicator" id="gestureIndicator"></div>
-    
-    <!-- Индикатор руки -->
-    <div class="hand-cursor" id="handCursor"></div>
-    
-    <!-- Дебаг информация -->
-    <div class="debug-info" id="debugInfo">
-        <div>Жест: <span id="debugGesture">Нет</span></div>
-        <div>Расстояние: <span id="debugDistance">0</span></div>
-        <div>Точки: <span id="debugPoints">0</span></div>
-        <div>Камера: <span id="debugCamera">Загрузка...</span></div>
-    </div>
-    
-    <!-- Информация о жестах -->
+    <!-- Компактная информация о жестах -->
     <div class="gesture-info" id="gestureInfo">
-        <h3 style="margin: 0 0 10px 0; color: #4fc3f7;">Жесты пальцами в воздухе</h3>
-        <div><b>👌 Щипок:</b> Соедините большой и указательный пальцы</div>
-        <div><b>👆 Указание:</b> Укажите пальцем на кнопки</div>
-        <div><b>🤚 Ладонь:</b> Раскройте ладонь для перемещения</div>
-        <div><b>✊ Кулак:</b> Сожмите кулак для сброса</div>
-        <div style="margin-top: 10px; font-size: 12px; color: #aaa;">
-            🎯 <b>Держите руку перед камерой телефона</b><br>
-            📱 <b>Лучше работает при хорошем освещении</b>
-        </div>
+        👆 Укажите на кнопку для управления
     </div>
     
     <!-- Статус жестов -->
-    <div id="gestureStatus">🎬 Жесты: Отключены</div>
+    <div id="gestureStatus">Жесты: Управляйте рукой</div>
     
     <div id="cameraModal" class="camera-modal" style="display: none;">
         <div class="camera-modal-content">
-            <h3 style="margin-bottom: 20px; color: #2c3e50;">Выберите камеру</h3>
+            <h4 style="margin-bottom: 15px; color: #2c3e50;">Выберите камеру</h4>
             <div id="cameraOptions"></div>
             <div class="close-modal" id="closeModal">Закрыть</div>
         </div>
@@ -435,19 +299,9 @@
         const cameraModal = document.getElementById('cameraModal');
         const cameraOptions = document.getElementById('cameraOptions');
         const closeModal = document.getElementById('closeModal');
-        const gestureIndicator = document.getElementById('gestureIndicator');
         const gestureInfo = document.getElementById('gestureInfo');
         const gestureStatus = document.getElementById('gestureStatus');
-        const handCanvas = document.getElementById('handCanvas');
-        const handCursor = document.getElementById('handCursor');
-        const gestureVideo = document.getElementById('gestureVideo');
-        const gestureBtn = document.getElementById('gestureBtn');
-        const debugBtn = document.getElementById('debugBtn');
-        const debugInfo = document.getElementById('debugInfo');
-        const debugGesture = document.getElementById('debugGesture');
-        const debugDistance = document.getElementById('debugDistance');
-        const debugPoints = document.getElementById('debugPoints');
-        const debugCamera = document.getElementById('debugCamera');
+        const helpBtn = document.getElementById('helpBtn');
         
         let videoEl, videoMesh, videoTexture;
         let videoContainer;
@@ -462,564 +316,353 @@
         let cameras = [];
         let isWideAngleCamera = false;
         let updateVideoRotationInterval = null;
+        let isHandTrackingEnabled = false;
+
+        // ========== ПРОСТЫЕ ЖЕСТЫ С МЫШЬЮ И ТАЧЕМ ==========
+        let startDistance = null;
+        let startScale = 1;
+        let startPosition = new THREE.Vector3();
+        let isRotating = false;
+        let lastTouchX = 0;
         
-        // ========== TENSORFLOW.JS HANDPOSE ДЛЯ ЖЕСТОВ ==========
-        let handposeModel = null;
-        let handCtx = null;
-        let isGestureEnabled = false;
-        let isDebugMode = false;
-        let gestureStream = null;
-        let currentGesture = 'none';
-        let lastGestureTime = 0;
-        let pinchStartScale = 1.0;
-        let pinchStartDistance = 0;
-        let isPinching = false;
-        let moveStartPosition = new THREE.Vector3();
-        let isMoving = false;
-        let buttonHoverStart = 0;
-        let hoveredButton = null;
+        // Управление жестами мышью и тачем
+        function initSimpleGestures() {
+            // Масштабирование двумя пальцами
+            scene.addEventListener('touchstart', e => {
+                if(e.touches.length == 2 && videoContainer){
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    startDistance = Math.sqrt(dx*dx + dy*dy);
+                    startScale = videoContainer.scale.x;
+                    showGestureInfo('👌 Масштабирование: двигайте пальцами');
+                }
+            });
+            
+            scene.addEventListener('touchmove', e => {
+                if(e.touches.length == 2 && videoContainer && startDistance){
+                    e.preventDefault();
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const currentDistance = Math.sqrt(dx*dx + dy*dy);
+                    const scaleFactor = currentDistance / startDistance;
+
+                    const newScale = Math.max(0.1, Math.min(5, startScale * scaleFactor));
+                    videoContainer.scale.set(newScale, newScale, newScale);
+                    currentScale = newScale;
+                    
+                    updateButtonPositions();
+                    showGestureInfo(`Размер: ${Math.round(currentScale * 100)}%`);
+                }
+            });
+            
+            scene.addEventListener('touchend', () => {
+                startDistance = null;
+            });
+            
+            // Вращение одним пальцем
+            scene.addEventListener('touchstart', e => {
+                if(e.touches.length == 1 && videoContainer){
+                    isRotating = true;
+                    lastTouchX = e.touches[0].clientX;
+                }
+            });
+            
+            scene.addEventListener('touchmove', e => {
+                if(isRotating && videoContainer && e.touches.length == 1){
+                    e.preventDefault();
+                    const deltaX = e.touches[0].clientX - lastTouchX;
+                    videoContainer.rotation.y += deltaX * 0.01;
+                    lastTouchX = e.touches[0].clientX;
+                    showGestureInfo('🔄 Вращение видео');
+                }
+            });
+            
+            scene.addEventListener('touchend', () => {
+                isRotating = false;
+            });
+            
+            // Перемещение тремя пальцами
+            scene.addEventListener('touchstart', e => {
+                if(e.touches.length == 3 && videoContainer){
+                    startPosition.copy(videoContainer.position);
+                    showGestureInfo('🤚 Перемещение: двигайте тремя пальцами');
+                }
+            });
+            
+            scene.addEventListener('touchmove', e => {
+                if(e.touches.length == 3 && videoContainer){
+                    e.preventDefault();
+                    const avgX = (e.touches[0].clientX + e.touches[1].clientX + e.touches[2].clientX) / 3;
+                    const avgY = (e.touches[0].clientY + e.touches[1].clientY + e.touches[2].clientY) / 3;
+                    
+                    const deltaX = (avgX - window.innerWidth/2) * 0.001;
+                    const deltaY = (window.innerHeight/2 - avgY) * 0.001;
+                    
+                    videoContainer.position.x = startPosition.x + deltaX;
+                    videoContainer.position.y = startPosition.y + deltaY;
+                }
+            });
+            
+            console.log('✅ Простые жесты инициализированы');
+            console.log('👌 2 пальца - масштабирование');
+            console.log('👆 1 палец - вращение');
+            console.log('🤚 3 пальца - перемещение');
+        }
         
-        // Загрузка модели TensorFlow Handpose
-        async function loadHandposeModel() {
-            try {
-                showLoading('Загрузка модели распознавания жестов...');
-                console.log('Загрузка TensorFlow.js Handpose модели...');
-                
-                // Загружаем модель
-                handposeModel = await handpose.load();
-                console.log('✅ TensorFlow Handpose модель загружена');
-                
-                // Запускаем камеру для жестов
-                await startGestureCamera();
-                
-            } catch (error) {
-                console.error('Ошибка загрузки модели Handpose:', error);
-                hideLoading();
-                gestureStatus.textContent = '🎬 Жесты: Ошибка загрузки модели';
-                gestureInfo.innerHTML = '⚠️ Распознавание жестов недоступно<br>Используйте управление мышью';
+        function showGestureInfo(text) {
+            gestureInfo.textContent = text;
+            gestureInfo.style.display = 'block';
+            gestureStatus.style.display = 'block';
+            
+            setTimeout(() => {
+                gestureInfo.style.display = 'none';
+            }, 2000);
+        }
+        
+        // ========== ОСНОВНЫЕ ФУНКЦИИ ==========
+        
+        function updateVideoRotation() {
+            if (!videoContainer || !scene.camera) return;
+            
+            const camera = scene.camera;
+            const cameraPosition = camera.getWorldPosition(new THREE.Vector3());
+            const videoPosition = videoContainer.getWorldPosition(new THREE.Vector3());
+            
+            const direction = new THREE.Vector3()
+                .subVectors(cameraPosition, videoPosition)
+                .normalize();
+            
+            const angleY = Math.atan2(direction.x, direction.z);
+            const horizontalDistance = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+            const angleX = Math.atan2(-direction.y, horizontalDistance);
+            
+            videoContainer.rotation.x = angleX;
+            videoContainer.rotation.y = angleY;
+            videoContainer.rotation.z = 0;
+            
+            if (playButton) {
+                playButton.rotation.x = -angleX;
+                playButton.rotation.y = 0;
+                playButton.rotation.z = 0;
+            }
+            if (pauseButton) {
+                pauseButton.rotation.x = -angleX;
+                pauseButton.rotation.y = 0;
+                pauseButton.rotation.z = 0;
+            }
+            if (volumeButton) {
+                volumeButton.rotation.x = -angleX;
+                volumeButton.rotation.y = 0;
+                volumeButton.rotation.z = 0;
             }
         }
         
-        // Запуск камеры для жестов
-        async function startGestureCamera() {
+        function startVideoRotationUpdate() {
+            if (updateVideoRotationInterval) {
+                clearInterval(updateVideoRotationInterval);
+            }
+            updateVideoRotationInterval = setInterval(updateVideoRotation, 50);
+        }
+        
+        async function getAvailableCameras() {
             try {
-                console.log('Запуск камеры для жестов...');
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                return videoDevices;
+            } catch (error) {
+                console.error('Error getting cameras:', error);
+                return [];
+            }
+        }
+        
+        function findWideAngleCamera(cameras) {
+            for (const camera of cameras) {
+                const label = camera.label.toLowerCase();
+                if (label.includes('wide') || label.includes('ultrawide') || 
+                    label.includes('0.6') || label.includes('ultra wide') ||
+                    label.includes('back') || label.includes('rear')) {
+                    return camera;
+                }
+            }
+            return cameras[0];
+        }
+        
+        async function switchCamera(deviceId) {
+            try {
+                loadingSpinner.style.display = 'block';
                 
-                // Получаем доступ к камере (пробуем заднюю, потом любую)
                 const constraints = {
                     video: {
-                        width: { ideal: 640 },
-                        height: { ideal: 480 },
-                        facingMode: { ideal: 'environment' } // Пробуем заднюю камеру
+                        deviceId: deviceId ? { exact: deviceId } : undefined,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     }
                 };
                 
-                gestureStream = await navigator.mediaDevices.getUserMedia(constraints)
-                    .catch(async () => {
-                        // Если не получилось с задней камерой, пробуем любую
-                        console.log('Не удалось получить заднюю камеру, пробуем любую...');
-                        debugCamera.textContent = 'Любая камера';
-                        return await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                width: { ideal: 640 },
-                                height: { ideal: 480 }
-                            }
-                        });
-                    });
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 
-                gestureVideo.srcObject = gestureStream;
-                gestureVideo.play();
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const currentDevice = devices.find(d => d.deviceId === deviceId);
                 
-                // Настраиваем канвас для рисования
-                handCtx = handCanvas.getContext('2d');
-                handCanvas.width = window.innerWidth;
-                handCanvas.height = window.innerHeight;
+                isWideAngleCamera = currentDevice.label.toLowerCase().includes('wide') || 
+                                    currentDevice.label.toLowerCase().includes('ultrawide') ||
+                                    currentDevice.label.toLowerCase().includes('0.6');
                 
-                debugCamera.textContent = 'Камера запущена';
+                const arSystem = scene.systems.arjs;
+                if (arSystem && arSystem._arSource) {
+                    if (arSystem._arSource.domElement.srcObject) {
+                        arSystem._arSource.domElement.srcObject.getTracks().forEach(track => track.stop());
+                    }
+                    
+                    arSystem._arSource.domElement.srcObject = stream;
+                    arSystem._arSource.play();
+                    
+                    setTimeout(() => {
+                        if (arSystem._arSource.onResize) {
+                            arSystem._arSource.onResize();
+                        }
+                    }, 100);
+                }
                 
-                // Запускаем распознавание жестов
-                detectGestures();
+                currentCameraId = deviceId;
+                cameraBtn.innerHTML = isWideAngleCamera ? '📷 0.6x' : '📷 Камера';
                 
-                hideLoading();
-                console.log('✅ Камера для жестов запущена');
+                loadingSpinner.style.display = 'none';
+                cameraModal.style.display = 'none';
+                
+                if (videoContainer && videoEl && !videoEl.paused) {
+                    videoEl.play().catch(e => console.log('Play error:', e));
+                }
                 
             } catch (error) {
-                console.error('Ошибка запуска камеры для жестов:', error);
-                hideLoading();
-                gestureStatus.textContent = '🎬 Жесты: Ошибка камеры';
-                gestureInfo.innerHTML = '⚠️ Не удалось получить доступ к камере<br>Используйте управление мышью';
+                console.error('Error switching camera:', error);
+                loadingSpinner.style.display = 'none';
+                alert('Не удалось переключить камеру');
             }
         }
         
-        // Распознавание жестов в реальном времени
-        async function detectGestures() {
-            if (!handposeModel || !isGestureEnabled) return;
+        cameraBtn.addEventListener('click', async () => {
+            cameras = await getAvailableCameras();
+            
+            if (cameras.length === 0) {
+                alert('Камеры не найдены');
+                return;
+            }
+            
+            cameraOptions.innerHTML = '';
+            
+            cameras.forEach((camera, index) => {
+                const cameraDiv = document.createElement('div');
+                cameraDiv.className = 'camera-option';
+                cameraDiv.textContent = camera.label || `Камера ${index + 1}`;
+                cameraDiv.addEventListener('click', () => {
+                    switchCamera(camera.deviceId);
+                });
+                cameraOptions.appendChild(cameraDiv);
+            });
+            
+            cameraModal.style.display = 'flex';
+        });
+        
+        closeModal.addEventListener('click', () => {
+            cameraModal.style.display = 'none';
+        });
+        
+        cameraModal.addEventListener('click', (e) => {
+            if (e.target === cameraModal) {
+                cameraModal.style.display = 'none';
+            }
+        });
+        
+        fileInput.addEventListener('change', async e => {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            loadingSpinner.style.display = 'block';
             
             try {
-                // Получаем предсказания от модели
-                const predictions = await handposeModel.estimateHands(gestureVideo);
+                if(videoEl && videoEl.src) {
+                    URL.revokeObjectURL(videoEl.src);
+                    stopTimeUpdate();
+                }
                 
-                // Очищаем канвас
-                handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
+                const url = URL.createObjectURL(file);
+                videoEl = document.createElement('video');
+                videoEl.src = url;
+                videoEl.loop = true;
+                videoEl.muted = true;
+                videoEl.playsInline = true;
+                videoEl.crossOrigin = 'anonymous';
                 
-                if (predictions.length > 0) {
-                    const hand = predictions[0];
-                    const landmarks = hand.landmarks;
-                    
-                    // Рисуем руку
-                    drawHand(landmarks, hand.annotations);
-                    
-                    // Обрабатываем жесты
-                    processGesture(landmarks);
-                    
-                    if (isDebugMode) {
-                        debugPoints.textContent = landmarks.length;
-                        debugInfo.style.display = 'block';
+                await new Promise((resolve) => {
+                    videoEl.addEventListener('loadeddata', resolve, { once: true });
+                });
+                
+                const aspectRatio = videoEl.videoWidth / videoEl.videoHeight;
+                if (isWideAngleCamera) {
+                    if (videoEl.videoHeight > videoEl.videoWidth) {
+                        videoWidth = 1.0;
+                        videoHeight = videoWidth / aspectRatio;
+                    } else {
+                        videoHeight = 1.2;
+                        videoWidth = videoHeight * aspectRatio;
                     }
                 } else {
-                    currentGesture = 'none';
-                    handCursor.style.display = 'none';
-                    gestureIndicator.style.display = 'none';
-                    
-                    if (isDebugMode) {
-                        debugGesture.textContent = 'Нет руки';
-                        debugDistance.textContent = '0';
-                        debugPoints.textContent = '0';
+                    if (videoEl.videoHeight > videoEl.videoWidth) {
+                        videoWidth = 0.8;
+                        videoHeight = videoWidth / aspectRatio;
+                    } else {
+                        videoHeight = 1.0;
+                        videoWidth = videoHeight * aspectRatio;
                     }
                 }
                 
-                // Продолжаем распознавание
-                requestAnimationFrame(detectGestures);
+                if (videoTexture) videoTexture.dispose();
+                videoTexture = new THREE.VideoTexture(videoEl);
+                videoTexture.minFilter = THREE.LinearFilter;
+                videoTexture.magFilter = THREE.LinearFilter;
+                videoTexture.format = THREE.RGBAFormat;
+                
+                // Показываем информацию о загруженном видео
+                timeEl.textContent = 'Видео загружено ✓';
+                setTimeout(() => {
+                    if (videoEl.duration) {
+                        startTimeUpdate();
+                    }
+                }, 500);
                 
             } catch (error) {
-                console.error('Ошибка распознавания жестов:', error);
-                setTimeout(detectGestures, 1000);
-            }
-        }
-        
-        // Отрисовка руки
-        function drawHand(landmarks, annotations) {
-            if (!landmarks) return;
-            
-            // Настройки рисования
-            handCtx.lineWidth = 4;
-            handCtx.strokeStyle = '#00ff00';
-            handCtx.fillStyle = '#ff0000';
-            
-            // Рисуем соединения пальцев
-            const fingerConnections = [
-                ['thumb', [0, 1, 2, 3, 4]],
-                ['indexFinger', [0, 5, 6, 7, 8]],
-                ['middleFinger', [0, 9, 10, 11, 12]],
-                ['ringFinger', [0, 13, 14, 15, 16]],
-                ['pinky', [0, 17, 18, 19, 20]]
-            ];
-            
-            fingerConnections.forEach(([finger, indices]) => {
-                for (let i = 0; i < indices.length - 1; i++) {
-                    const start = landmarks[indices[i]];
-                    const end = landmarks[indices[i + 1]];
-                    
-                    // Конвертируем координаты в экранные
-                    const startX = start[0] * (handCanvas.width / gestureVideo.videoWidth);
-                    const startY = start[1] * (handCanvas.height / gestureVideo.videoHeight);
-                    const endX = end[0] * (handCanvas.width / gestureVideo.videoWidth);
-                    const endY = end[1] * (handCanvas.height / gestureVideo.videoHeight);
-                    
-                    handCtx.beginPath();
-                    handCtx.moveTo(startX, startY);
-                    handCtx.lineTo(endX, endY);
-                    handCtx.stroke();
-                }
-            });
-            
-            // Рисуем точки суставов
-            landmarks.forEach((point, index) => {
-                const x = point[0] * (handCanvas.width / gestureVideo.videoWidth);
-                const y = point[1] * (handCanvas.height / gestureVideo.videoHeight);
-                
-                // Разные цвета для разных точек
-                let color = '#ff0000';
-                let size = 6;
-                
-                if (index === 4 || index === 8 || index === 12 || index === 16 || index === 20) {
-                    color = '#ffff00'; // Кончики пальцев - желтые
-                    size = 8;
-                }
-                
-                handCtx.beginPath();
-                handCtx.arc(x, y, size, 0, Math.PI * 2);
-                handCtx.fillStyle = color;
-                handCtx.fill();
-                
-                // Обводка
-                handCtx.strokeStyle = '#ffffff';
-                handCtx.lineWidth = 2;
-                handCtx.stroke();
-            });
-            
-            // Показываем видео камеры в углу (для дебага)
-            if (isDebugMode) {
-                gestureVideo.style.display = 'block';
-            }
-        }
-        
-        // Обработка жестов
-        function processGesture(landmarks) {
-            if (!isPlaced || !videoContainer) return;
-            
-            // Индексы пальцев
-            const THUMB_TIP = 4;
-            const INDEX_TIP = 8;
-            const MIDDLE_TIP = 12;
-            const RING_TIP = 16;
-            const PINKY_TIP = 20;
-            
-            // Получаем координаты
-            const thumbTip = landmarks[THUMB_TIP];
-            const indexTip = landmarks[INDEX_TIP];
-            const middleTip = landmarks[MIDDLE_TIP];
-            
-            // Конвертируем координаты в экранные
-            const screenX = indexTip[0] * (window.innerWidth / gestureVideo.videoWidth);
-            const screenY = indexTip[1] * (window.innerHeight / gestureVideo.videoHeight);
-            
-            // Обновляем курсор руки
-            updateHandCursor(screenX, screenY);
-            
-            // Вычисляем расстояния между пальцами
-            const pinchDistance = calculateDistance(thumbTip, indexTip);
-            const middleDistance = calculateDistance(indexTip, middleTip);
-            
-            if (isDebugMode) {
-                debugDistance.textContent = pinchDistance.toFixed(1);
-            }
-            
-            // Определяем жесты
-            
-            // 1. Жест щипка (большой и указательный пальцы вместе)
-            if (pinchDistance < 40) {
-                if (!isPinching) {
-                    isPinching = true;
-                    pinchStartScale = currentScale;
-                    pinchStartDistance = pinchDistance;
-                    
-                    currentGesture = 'pinch';
-                    gestureStatus.textContent = '👌 Жест: Изменение размера';
-                    
-                    gestureIndicator.style.display = 'block';
-                    gestureIndicator.style.borderColor = '#2ecc71';
-                    gestureIndicator.style.background = 'rgba(46, 204, 113, 0.2)';
-                    gestureIndicator.style.left = (screenX - 60) + 'px';
-                    gestureIndicator.style.top = (screenY - 60) + 'px';
-                    
-                    gestureInfo.textContent = '👌 ИЗМЕНЕНИЕ РАЗМЕРА: Соедините или разведите пальцы';
-                    
-                    if (isDebugMode) {
-                        debugGesture.textContent = 'Щипок';
-                    }
-                }
-                
-                // Масштабируем видео
-                const scaleChange = (pinchStartDistance - pinchDistance) * 0.01;
-                currentScale = Math.max(0.3, Math.min(3, pinchStartScale + scaleChange));
-                videoContainer.scale.set(currentScale, currentScale, currentScale);
-                updateButtonPositions();
-                
-            } 
-            // 2. Жест открытой ладони (все пальцы вытянуты)
-            else if (isHandOpen(landmarks)) {
-                if (!isMoving) {
-                    isMoving = true;
-                    moveStartPosition.copy(videoContainer.position);
-                    
-                    currentGesture = 'open';
-                    gestureStatus.textContent = '🤚 Жест: Перемещение видео';
-                    
-                    gestureIndicator.style.display = 'block';
-                    gestureIndicator.style.borderColor = '#3498db';
-                    gestureIndicator.style.background = 'rgba(52, 152, 219, 0.2)';
-                    gestureIndicator.style.left = (screenX - 60) + 'px';
-                    gestureIndicator.style.top = (screenY - 60) + 'px';
-                    
-                    gestureInfo.textContent = '🤚 ПЕРЕМЕЩЕНИЕ: Двигайте раскрытой ладонью';
-                    
-                    if (isDebugMode) {
-                        debugGesture.textContent = 'Открытая ладонь';
-                    }
-                }
-                
-                // Перемещаем видео
-                const moveX = (screenX - window.innerWidth/2) * 0.01;
-                const moveY = (window.innerHeight/2 - screenY) * 0.01;
-                
-                videoContainer.position.x = moveStartPosition.x + moveX;
-                videoContainer.position.y = moveStartPosition.y + moveY;
-                
-            }
-            // 3. Жест кулака (все пальцы сжаты)
-            else if (isHandClosed(landmarks)) {
-                if (Date.now() - lastGestureTime > 1000) {
-                    lastGestureTime = Date.now();
-                    
-                    // Сброс настроек
-                    currentScale = 1;
-                    videoContainer.scale.set(currentScale, currentScale, currentScale);
-                    videoContainer.position.set(0, 0, -1.5);
-                    updateButtonPositions();
-                    
-                    currentGesture = 'fist';
-                    gestureStatus.textContent = '✊ Жест: Сброс настроек';
-                    
-                    gestureIndicator.style.display = 'block';
-                    gestureIndicator.style.borderColor = '#e74c3c';
-                    gestureIndicator.style.background = 'rgba(231, 76, 60, 0.2)';
-                    gestureIndicator.style.left = (screenX - 60) + 'px';
-                    gestureIndicator.style.top = (screenY - 60) + 'px';
-                    gestureIndicator.style.animation = 'none';
-                    
-                    setTimeout(() => {
-                        gestureIndicator.style.animation = 'pulse 1s infinite';
-                    }, 100);
-                    
-                    gestureInfo.textContent = '✊ СБРОС: Настройки сброшены!';
-                    
-                    if (isDebugMode) {
-                        debugGesture.textContent = 'Кулак (сброс)';
-                    }
-                    
-                    showGestureFeedback('✅ Настройки сброшены!');
-                }
-            }
-            // 4. Жест указания
-            else {
-                isPinching = false;
-                isMoving = false;
-                currentGesture = 'point';
-                gestureStatus.textContent = '👆 Жест: Указание';
-                
-                gestureIndicator.style.display = 'none';
-                gestureInfo.textContent = '👆 УКАЗАНИЕ: Наведите на кнопку';
-                
-                if (isDebugMode) {
-                    debugGesture.textContent = 'Указание';
-                }
-                
-                // Проверяем наведение на кнопки
-                checkButtonHover(screenX, screenY);
-            }
-        }
-        
-        // Вспомогательные функции для жестов
-        function calculateDistance(point1, point2) {
-            const dx = point1[0] - point2[0];
-            const dy = point1[1] - point2[1];
-            return Math.sqrt(dx * dx + dy * dy);
-        }
-        
-        function isHandOpen(landmarks) {
-            // Проверяем, открыта ли ладонь (кончики пальцев выше оснований)
-            const fingerTips = [4, 8, 12, 16, 20];
-            const fingerBases = [2, 5, 9, 13, 17];
-            
-            let openCount = 0;
-            
-            for (let i = 0; i < fingerTips.length; i++) {
-                const tip = landmarks[fingerTips[i]];
-                const base = landmarks[fingerBases[i]];
-                
-                // Для большинства камер Y увеличивается вниз
-                if (tip[1] < base[1]) {
-                    openCount++;
-                }
-            }
-            
-            return openCount >= 4; // Большинство пальцев вытянуты
-        }
-        
-        function isHandClosed(landmarks) {
-            // Проверяем, сжат ли кулак (кончики пальцев близко к ладони)
-            const wrist = landmarks[0];
-            const fingerTips = [4, 8, 12, 16, 20];
-            
-            let closeCount = 0;
-            
-            for (const tipIndex of fingerTips) {
-                const tip = landmarks[tipIndex];
-                const distance = calculateDistance(tip, wrist);
-                
-                if (distance < 100) { // Пороговое значение
-                    closeCount++;
-                }
-            }
-            
-            return closeCount >= 4; // Большинство пальцев сжаты
-        }
-        
-        function updateHandCursor(x, y) {
-            // Ограничиваем координаты
-            const clampedX = Math.max(30, Math.min(window.innerWidth - 30, x));
-            const clampedY = Math.max(30, Math.min(window.innerHeight - 30, y));
-            
-            handCursor.style.left = (clampedX - 30) + 'px';
-            handCursor.style.top = (clampedY - 30) + 'px';
-            handCursor.style.display = 'block';
-            
-            // Меняем цвет в зависимости от жеста
-            switch(currentGesture) {
-                case 'pinch':
-                    handCursor.style.borderColor = '#2ecc71';
-                    handCursor.style.background = 'rgba(46, 204, 113, 0.3)';
-                    break;
-                case 'open':
-                    handCursor.style.borderColor = '#3498db';
-                    handCursor.style.background = 'rgba(52, 152, 219, 0.3)';
-                    break;
-                case 'fist':
-                    handCursor.style.borderColor = '#e74c3c';
-                    handCursor.style.background = 'rgba(231, 76, 60, 0.3)';
-                    break;
-                default:
-                    handCursor.style.borderColor = '#4fc3f7';
-                    handCursor.style.background = 'rgba(79, 195, 247, 0.3)';
-            }
-        }
-        
-        function checkButtonHover(x, y) {
-            if (!isPlaced) return;
-            
-            const buttons = [
-                { btn: playButton, action: () => executeButtonAction('play'), label: 'Play' },
-                { btn: pauseButton, action: () => executeButtonAction('pause'), label: 'Pause' },
-                { btn: volumeButton, action: () => executeButtonAction('toggleVolume'), label: 'Volume' }
-            ];
-            
-            let currentlyHovered = null;
-            
-            buttons.forEach(({ btn, action, label }) => {
-                if (!btn) return;
-                
-                // Получаем мировую позицию кнопки
-                const buttonWorldPos = new THREE.Vector3();
-                btn.getWorldPosition(buttonWorldPos);
-                
-                // Проецируем позицию кнопки на экран
-                buttonWorldPos.project(scene.camera);
-                
-                const buttonX = (buttonWorldPos.x * 0.5 + 0.5) * window.innerWidth;
-                const buttonY = (1 - (buttonWorldPos.y * 0.5 + 0.5)) * window.innerHeight;
-                
-                // Проверяем расстояние до кнопки
-                const distance = Math.sqrt(
-                    Math.pow(x - buttonX, 2) + Math.pow(y - buttonY, 2)
-                );
-                
-                // Зона наведения 100px
-                if (distance < 100) {
-                    currentlyHovered = { btn, action, label };
-                    
-                    // Подсвечиваем кнопку
-                    btn.children[1].material.emissive.setHex(0x888888);
-                    
-                    // Показываем индикатор
-                    gestureIndicator.style.display = 'block';
-                    gestureIndicator.style.borderColor = '#f39c12';
-                    gestureIndicator.style.background = 'rgba(243, 156, 18, 0.2)';
-                    gestureIndicator.style.left = (x - 60) + 'px';
-                    gestureIndicator.style.top = (y - 60) + 'px';
-                    
-                    gestureInfo.textContent = `👆 НАЖАТИЕ КНОПКИ ${label}: Удерживайте палец...`;
-                } else {
-                    // Сбрасываем подсветку
-                    btn.children[1].material.emissive.setHex(0x000000);
-                }
-            });
-            
-            // Обработка наведения
-            if (currentlyHovered) {
-                if (hoveredButton !== currentlyHovered.btn) {
-                    // Новая кнопка
-                    hoveredButton = currentlyHovered.btn;
-                    buttonHoverStart = Date.now();
-                } else if (Date.now() - buttonHoverStart > 2000) {
-                    // Удерживали 2 секунды - нажимаем
-                    currentlyHovered.action();
-                    buttonHoverStart = Date.now();
-                    
-                    // Визуальная обратная связь
-                    gestureIndicator.style.borderColor = '#2ecc71';
-                    gestureIndicator.style.background = 'rgba(46, 204, 113, 0.3)';
-                    gestureInfo.textContent = `✅ КНОПКА ${currentlyHovered.label} НАЖАТА!`;
-                    
-                    setTimeout(() => {
-                        gestureIndicator.style.display = 'none';
-                    }, 500);
-                }
-            } else {
-                // Не наведено ни на одну кнопку
-                hoveredButton = null;
-                gestureIndicator.style.display = 'none';
-                gestureInfo.textContent = '👆 УКАЗАНИЕ: Наведите пальцем на кнопку';
-            }
-        }
-        
-        // Включение/выключение жестов
-        gestureBtn.addEventListener('click', () => {
-            if (isGestureEnabled) {
-                disableGestures();
-            } else {
-                enableGestures();
+                console.error('Error loading video:', error);
+                alert('Ошибка загрузки видео');
+            } finally {
+                loadingSpinner.style.display = 'none';
             }
         });
         
-        function enableGestures() {
-            isGestureEnabled = true;
-            gestureBtn.textContent = '👋 Жесты включены';
-            gestureBtn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
-            gestureStatus.textContent = '🎬 Жесты: Загрузка модели...';
-            gestureInfo.style.display = 'block';
+        function startTimeUpdate() {
+            if (updateTimeInterval) {
+                clearInterval(updateTimeInterval);
+            }
             
-            // Загружаем модель
-            loadHandposeModel();
+            updateTimeInterval = setInterval(() => {
+                if(videoEl && videoEl.duration) {
+                    const f = t => `${Math.floor(t/60).toString().padStart(2,'0')}:${Math.floor(t%60).toString().padStart(2,'0')}`;
+                    timeEl.textContent = `${f(videoEl.currentTime)} / ${f(videoEl.duration)}`;
+                }
+            }, 300);
         }
         
-        function disableGestures() {
-            isGestureEnabled = false;
-            gestureBtn.textContent = '👋 Включить жесты';
-            gestureBtn.style.background = 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)';
-            gestureStatus.textContent = '🎬 Жесты: Отключены';
-            gestureInfo.style.display = 'none';
-            handCursor.style.display = 'none';
-            gestureIndicator.style.display = 'none';
-            gestureVideo.style.display = 'none';
-            
-            // Останавливаем поток камеры
-            if (gestureStream) {
-                gestureStream.getTracks().forEach(track => track.stop());
-                gestureStream = null;
+        function stopTimeUpdate() {
+            if (updateTimeInterval) {
+                clearInterval(updateTimeInterval);
+                updateTimeInterval = null;
             }
         }
         
-        // Дебаг режим
-        debugBtn.addEventListener('click', () => {
-            isDebugMode = !isDebugMode;
-            debugInfo.style.display = isDebugMode ? 'block' : 'none';
-            debugBtn.textContent = isDebugMode ? '🐛 Скрыть дебаг' : '🐛 Дебаг жестов';
-            debugBtn.style.background = isDebugMode ? 
-                'linear-gradient(135deg, #3498db 0%, #2980b9 100%)' : 
-                'linear-gradient(135deg, #f39c12 0%, #e67e22 100%)';
-        });
-        
-        // ========== ОСТАЛЬНЫЙ КОД ==========
-        
-        // [Здесь должен быть ваш существующий код для остальных функций]
-        // createButtons, createModernButton, executeButtonAction, updateButtonPositions,
-        // updateVideoRotation, startVideoRotationUpdate, и другие функции
-        
-        // Размещение видео
+        // РАЗМЕЩЕНИЕ ВИДЕО - ИСПРАВЛЕННАЯ ФУНКЦИЯ
         placeBtn.addEventListener('click', () => {
             if(!videoEl || !videoTexture) {
-                alert('Пожалуйста, сначала выберите видео файл');
+                alert('Сначала выберите видео файл');
                 return;
             }
             
@@ -1045,10 +688,8 @@
                 
                 startVideoRotationUpdate();
                 
-                // Автоматически включаем жесты через 2 секунды
-                setTimeout(() => {
-                    enableGestures();
-                }, 2000);
+                // Инициализируем простые жесты
+                initSimpleGestures();
             }
             
             const pos = camera.position.clone().add(
@@ -1064,38 +705,359 @@
                 videoEl.play().catch(e => console.log('Play error:', e));
                 firstInteraction = false;
                 startTimeUpdate();
+                
+                // Показываем подсказку о жестах
+                showGestureInfo('🎬 Видео размещено! Используйте жесты');
             }
             
             isPlaced = true;
             placeBtn.textContent = '📌 Переместить видео';
         });
         
-        // Вспомогательные функции
-        function showGestureFeedback(text) {
-            gestureInfo.textContent = text;
+        // Создание кнопок управления
+        function createButtons() {
+            if (playButton) videoContainer.remove(playButton);
+            if (pauseButton) videoContainer.remove(pauseButton);
+            if (volumeButton) videoContainer.remove(volumeButton);
+            
+            const buttonY = -videoHeight/2 - 0.15;
+            const buttonSpacing = videoWidth * 0.25;
+            
+            playButton = createModernButton('play-btn', -buttonSpacing, buttonY, 0.001, '#2ecc71', '▶', 'play', 0.08);
+            pauseButton = createModernButton('pause-btn', 0, buttonY, 0.001, '#e74c3c', '⏸', 'pause', 0.08);
+            volumeButton = createModernButton('volume-btn', buttonSpacing, buttonY, 0.001, '#3498db', '🔊', 'toggleVolume', 0.08);
+            
+            videoContainer.add(playButton);
+            videoContainer.add(pauseButton);
+            videoContainer.add(volumeButton);
+            
+            createAFrameButtons();
+        }
+        
+        function createModernButton(id, x, y, z, color, icon, action, size = 0.08) {
+            const buttonGroup = new THREE.Group();
+            buttonGroup.userData = { 
+                id: id, 
+                action: action,
+                originalColor: new THREE.Color(color),
+                isHovered: false
+            };
+            
+            const buttonGeometry = new THREE.CylinderGeometry(size, size, 0.02, 32);
+            const buttonMaterial = new THREE.MeshPhongMaterial({ 
+                color: color,
+                transparent: true,
+                opacity: 0.9,
+                shininess: 30,
+                emissive: new THREE.Color(color).multiplyScalar(0.3)
+            });
+            
+            const buttonMesh = new THREE.Mesh(buttonGeometry, buttonMaterial);
+            buttonMesh.rotation.x = Math.PI / 2;
+            
+            const iconCanvas = createButtonIcon(icon, size * 120);
+            const iconTexture = new THREE.CanvasTexture(iconCanvas);
+            const iconMaterial = new THREE.MeshBasicMaterial({
+                map: iconTexture,
+                transparent: true,
+                side: THREE.DoubleSide,
+                alphaTest: 0.5
+            });
+            
+            const iconGeometry = new THREE.PlaneGeometry(size * 1.6, size * 1.6);
+            const iconMesh = new THREE.Mesh(iconGeometry, iconMaterial);
+            iconMesh.position.z = 0.01;
+            
+            const glowGeometry = new THREE.CylinderGeometry(size * 1.15, size * 1.15, 0.021, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.BackSide
+            });
+            const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+            glowMesh.rotation.x = Math.PI / 2;
+            glowMesh.visible = false;
+            
+            buttonGroup.add(glowMesh);
+            buttonGroup.add(buttonMesh);
+            buttonGroup.add(iconMesh);
+            buttonGroup.position.set(x, y, z);
+            
+            buttonGroup.userData.setHover = function(isHovering) {
+                this.userData.isHovered = isHovering;
+                glowMesh.visible = isHovering;
+                
+                if (isHovering) {
+                    buttonMesh.scale.set(1.2, 1.2, 1.2);
+                    buttonMaterial.emissive.setHex(0x555555);
+                } else {
+                    buttonMesh.scale.set(1, 1, 1);
+                    buttonMaterial.emissive.setHex(0x000000);
+                }
+            };
+            
+            return buttonGroup;
+        }
+        
+        function createButtonIcon(icon, size = 90) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 256;
+            
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            
+            context.beginPath();
+            context.arc(128, 128, 110, 0, Math.PI * 2);
+            context.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            context.fill();
+            
+            context.font = `bold ${size}px Arial`;
+            context.fillStyle = '#FFFFFF';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(icon, 128, 128);
+            
+            return canvas;
+        }
+        
+        function createAFrameButtons() {
+            const oldButtons = scene.querySelectorAll('[cursor-listener]');
+            oldButtons.forEach(btn => {
+                if (btn.parentNode) btn.parentNode.removeChild(btn);
+            });
+            
+            const buttonY = -videoHeight/2 - 0.15;
+            const buttonSpacing = videoWidth * 0.25;
+            
+            const playBtn = document.createElement('a-entity');
+            playBtn.classList.add('clickable');
+            playBtn.setAttribute('id', 'a-play-btn');
+            playBtn.setAttribute('geometry', { primitive: 'plane', width: 0.16, height: 0.16 });
+            playBtn.setAttribute('material', { opacity: 0.001, transparent: true });
+            playBtn.setAttribute('position', { x: -buttonSpacing, y: buttonY, z: 0.002 });
+            
+            playBtn.addEventListener('mouseenter', () => {
+                if(playButton) playButton.userData.setHover(true);
+            });
+            playBtn.addEventListener('mouseleave', () => {
+                if(playButton) playButton.userData.setHover(false);
+            });
+            playBtn.addEventListener('click', () => executeButtonAction('play'));
+            playBtn.addEventListener('fusing', (e) => {
+                if(e.detail.progress === 1) executeButtonAction('play');
+            });
+            
+            const pauseBtn = document.createElement('a-entity');
+            pauseBtn.classList.add('clickable');
+            pauseBtn.setAttribute('id', 'a-pause-btn');
+            pauseBtn.setAttribute('geometry', { primitive: 'plane', width: 0.16, height: 0.16 });
+            pauseBtn.setAttribute('material', { opacity: 0.001, transparent: true });
+            pauseBtn.setAttribute('position', { x: 0, y: buttonY, z: 0.002 });
+            
+            pauseBtn.addEventListener('mouseenter', () => {
+                if(pauseButton) pauseButton.userData.setHover(true);
+            });
+            pauseBtn.addEventListener('mouseleave', () => {
+                if(pauseButton) pauseButton.userData.setHover(false);
+            });
+            pauseBtn.addEventListener('click', () => executeButtonAction('pause'));
+            pauseBtn.addEventListener('fusing', (e) => {
+                if(e.detail.progress === 1) executeButtonAction('pause');
+            });
+            
+            const volumeBtn = document.createElement('a-entity');
+            volumeBtn.classList.add('clickable');
+            volumeBtn.setAttribute('id', 'a-volume-btn');
+            volumeBtn.setAttribute('geometry', { primitive: 'plane', width: 0.16, height: 0.16 });
+            volumeBtn.setAttribute('material', { opacity: 0.001, transparent: true });
+            volumeBtn.setAttribute('position', { x: buttonSpacing, y: buttonY, z: 0.002 });
+            
+            volumeBtn.addEventListener('mouseenter', () => {
+                if(volumeButton) volumeButton.userData.setHover(true);
+            });
+            volumeBtn.addEventListener('mouseleave', () => {
+                if(volumeButton) volumeButton.userData.setHover(false);
+            });
+            volumeBtn.addEventListener('click', () => executeButtonAction('toggleVolume'));
+            volumeBtn.addEventListener('fusing', (e) => {
+                if(e.detail.progress === 1) executeButtonAction('toggleVolume');
+            });
+            
+            scene.appendChild(playBtn);
+            scene.appendChild(pauseBtn);
+            scene.appendChild(volumeBtn);
+            
+            if (videoContainer) {
+                playBtn.object3D.parent = videoContainer;
+                pauseBtn.object3D.parent = videoContainer;
+                volumeBtn.object3D.parent = videoContainer;
+            }
+        }
+        
+        function executeButtonAction(action) {
+            switch(action) {
+                case 'play':
+                    if(videoEl) {
+                        videoEl.play().then(() => {
+                            startTimeUpdate();
+                        }).catch(e => console.log('Play error:', e));
+                        
+                        if(playButton) {
+                            playButton.children[1].material.emissive.setHex(0x666666);
+                            setTimeout(() => {
+                                playButton.children[1].material.emissive.setHex(0x000000);
+                            }, 300);
+                        }
+                        showGestureInfo('▶️ Воспроизведение');
+                    }
+                    break;
+                    
+                case 'pause':
+                    if(videoEl) {
+                        videoEl.pause();
+                        
+                        if(pauseButton) {
+                            pauseButton.children[1].material.emissive.setHex(0x666666);
+                            setTimeout(() => {
+                                pauseButton.children[1].material.emissive.setHex(0x000000);
+                            }, 300);
+                        }
+                        showGestureInfo('⏸️ Пауза');
+                    }
+                    break;
+                    
+                case 'toggleVolume':
+                    if(videoEl) {
+                        videoEl.muted = !videoEl.muted;
+                        if(volumeButton) {
+                            const iconMesh = volumeButton.children[2];
+                            const canvas = createButtonIcon(videoEl.muted ? '🔇' : '🔊', 90);
+                            iconMesh.material.map = new THREE.CanvasTexture(canvas);
+                            iconMesh.material.needsUpdate = true;
+                            
+                            volumeButton.children[1].material.emissive.setHex(0x666666);
+                            setTimeout(() => {
+                                volumeButton.children[1].material.emissive.setHex(0x000000);
+                            }, 300);
+                        }
+                        showGestureInfo(videoEl.muted ? '🔇 Без звука' : '🔊 Со звуком');
+                    }
+                    break;
+            }
+        }
+        
+        function updateButtonPositions() {
+            if (!videoContainer) return;
+            
+            const buttonY = -videoHeight/2 - 0.15;
+            const buttonSpacing = videoWidth * 0.25;
+            
+            if (playButton) playButton.position.set(-buttonSpacing, buttonY, 0.001);
+            if (pauseButton) pauseButton.position.set(0, buttonY, 0.001);
+            if (volumeButton) volumeButton.position.set(buttonSpacing, buttonY, 0.001);
+            
+            const playBtn = document.getElementById('a-play-btn');
+            const pauseBtn = document.getElementById('a-pause-btn');
+            const volumeBtn = document.getElementById('a-volume-btn');
+            
+            if (playBtn) playBtn.setAttribute('position', { x: -buttonSpacing, y: buttonY, z: 0.002 });
+            if (pauseBtn) pauseBtn.setAttribute('position', { x: 0, y: buttonY, z: 0.002 });
+            if (volumeBtn) volumeBtn.setAttribute('position', { x: buttonSpacing, y: buttonY, z: 0.002 });
+        }
+        
+        // Управление с клавиатуры
+        window.addEventListener('keydown', (e) => {
+            if(!videoContainer) return;
+            
+            switch(e.key) {
+                case ' ':
+                    if(videoEl) {
+                        if (videoEl.paused) {
+                            videoEl.play();
+                            showGestureInfo('▶️ Воспроизведение');
+                        } else {
+                            videoEl.pause();
+                            showGestureInfo('⏸️ Пауза');
+                        }
+                    }
+                    break;
+                case '+':
+                case '=':
+                    currentScale = Math.min(5, currentScale * 1.1);
+                    videoContainer.scale.set(currentScale, currentScale, currentScale);
+                    updateButtonPositions();
+                    showGestureInfo(`➕ Размер: ${Math.round(currentScale * 100)}%`);
+                    break;
+                case '-':
+                    currentScale = Math.max(0.1, currentScale * 0.9);
+                    videoContainer.scale.set(currentScale, currentScale, currentScale);
+                    updateButtonPositions();
+                    showGestureInfo(`➖ Размер: ${Math.round(currentScale * 100)}%`);
+                    break;
+                case 'r':
+                    currentScale = 1;
+                    videoContainer.scale.set(currentScale, currentScale, currentScale);
+                    videoContainer.rotation.set(0, 0, 0);
+                    updateButtonPositions();
+                    showGestureInfo('🔄 Сброс');
+                    break;
+                case 'm':
+                    if(videoEl) videoEl.muted = !videoEl.muted;
+                    showGestureInfo(videoEl.muted ? '🔇 Без звука' : '🔊 Со звуком');
+                    break;
+                case 'h':
+                    gestureInfo.style.display = gestureInfo.style.display === 'none' ? 'block' : 'none';
+                    break;
+            }
+        });
+        
+        helpBtn.addEventListener('click', () => {
+            const helpText = [
+                '👌 2 пальца - Масштабирование',
+                '👆 1 палец - Вращение',
+                '🤚 3 пальца - Перемещение',
+                '🎮 Используйте мышь для кнопок',
+                '🎯 Наведите курсор на кнопку и нажмите'
+            ].join('<br>');
+            
+            gestureInfo.innerHTML = helpText;
             gestureInfo.style.display = 'block';
             
             setTimeout(() => {
-                if (gestureInfo.textContent === text && currentGesture === 'none') {
-                    gestureInfo.style.display = 'none';
+                gestureInfo.style.display = 'none';
+            }, 5000);
+        });
+        
+        window.addEventListener('beforeunload', () => {
+            if(videoEl && videoEl.src) {
+                URL.revokeObjectURL(videoEl.src);
+            }
+            stopTimeUpdate();
+            if (updateVideoRotationInterval) {
+                clearInterval(updateVideoRotationInterval);
+            }
+        });
+        
+        // Автоматический поиск широкоугольной камеры
+        window.addEventListener('load', async () => {
+            setTimeout(async () => {
+                try {
+                    const cameras = await getAvailableCameras();
+                    if (cameras.length > 1) {
+                        const wideAngleCamera = findWideAngleCamera(cameras);
+                        if (wideAngleCamera) {
+                            switchCamera(wideAngleCamera.deviceId);
+                        }
+                    }
+                } catch (error) {
+                    console.log('Auto camera detection failed:', error);
                 }
-            }, 2000);
-        }
+            }, 1000);
+        });
         
-        function showLoading(text) {
-            loadingSpinner.style.display = 'block';
-        }
-        
-        function hideLoading() {
-            loadingSpinner.style.display = 'none';
-        }
-        
-        console.log('🎬 AR Видео с жестами пальцев готово!');
-        console.log('👋 Жесты пальцами в воздухе с помощью TensorFlow.js');
-        console.log('📱 Держите руку перед камерой телефона');
-        console.log('👌 Соедините большой и указательный пальцы - масштабирование');
-        console.log('🤚 Раскройте ладонь - перемещение');
-        console.log('👆 Укажите пальцем на кнопки - управление');
+        console.log('🎬 AR Видео с жестами готово!');
     </script>
 </body>
 </html>
