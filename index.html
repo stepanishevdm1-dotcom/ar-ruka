@@ -1,67 +1,1070 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Hand Test</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-
-<style>
-body { margin:0; overflow:hidden; background:black; }
-video, canvas {
-  position:fixed;
-  inset:0;
-  width:100vw;
-  height:100vh;
-}
-canvas { pointer-events:none; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Видео с Управлением Рукой</title>
+    
+    <!-- MediaPipe для отслеживания рук -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    
+    <!-- Three.js для 3D графики -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- WebXR для AR -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        
+        /* Экраны */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        
+        .screen.active {
+            display: flex;
+        }
+        
+        /* Экран загрузки */
+        #loadingScreen {
+            background: #0f3460;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .loader {
+            text-align: center;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #4cc9f0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Главный экран */
+        .menu-content {
+            max-width: 500px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #4cc9f0;
+            margin-bottom: 15px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #a5b4cb;
+            margin-bottom: 40px;
+            line-height: 1.5;
+            font-size: 16px;
+        }
+        
+        /* Кнопки */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 20px;
+            margin: 12px 0;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            text-align: center;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, #4361ee, #3a0ca3);
+            color: white;
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        /* Экран загрузки видео */
+        .upload-area {
+            border: 3px dashed #4cc9f0;
+            border-radius: 20px;
+            padding: 40px 20px;
+            text-align: center;
+            margin: 25px 0;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s;
+        }
+        
+        .upload-area.dragover {
+            background: rgba(76, 201, 240, 0.1);
+            border-color: #4cc9f0;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .video-preview {
+            margin-top: 25px;
+            display: none;
+        }
+        
+        .video-preview.active {
+            display: block;
+        }
+        
+        video {
+            width: 100%;
+            border-radius: 12px;
+            margin: 15px 0;
+            background: #000;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Инструкции */
+        .instruction-step {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4cc9f0;
+        }
+        
+        /* AR экран */
+        #arScreen {
+            padding: 0;
+            background: #000;
+        }
+        
+        #arCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        #handCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        /* Элементы управления */
+        .ar-controls {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+        
+        .control-btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:active {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(0.95);
+        }
+        
+        /* Кнопка назад */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Информация о жестах */
+        .gesture-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 300px;
+            z-index: 10;
+        }
+        
+        .gesture-info h3 {
+            color: #4cc9f0;
+            margin-bottom: 10px;
+        }
+        
+        .gesture-list {
+            list-style: none;
+        }
+        
+        .gesture-list li {
+            margin: 8px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .gesture-list li:before {
+            content: "👉";
+            position: absolute;
+            left: 0;
+        }
+        
+        /* Сообщения */
+        #message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            z-index: 1000;
+            display: none;
+            text-align: center;
+            max-width: 90%;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #message.active {
+            display: block;
+            animation: fadeInOut 3s ease;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 480px) {
+            .gesture-info {
+                display: none;
+            }
+            
+            .ar-controls {
+                bottom: 15px;
+                padding: 12px 15px;
+                gap: 10px;
+            }
+        }
+    </style>
 </head>
-
 <body>
+    <!-- Экран загрузки -->
+    <div id="loadingScreen" class="screen active">
+        <div class="loader">
+            <div class="spinner"></div>
+            <h1>AR Видео с Управлением Рукой</h1>
+            <p class="subtitle">Загрузка системы распознавания жестов...</p>
+        </div>
+    </div>
 
-<video id="video" autoplay playsinline></video>
-<canvas id="canvas"></canvas>
+    <!-- Главный экран -->
+    <div id="mainScreen" class="screen">
+        <div class="menu-content">
+            <h1>🎥 AR Видео с Управлением Рукой</h1>
+            <p class="subtitle">Загрузите видео и управляйте им жестами в дополненной реальности</p>
+            
+            <button id="startAR" class="btn btn-primary">
+                🚀 Запустить AR с жестами
+            </button>
+            
+            <button id="uploadVideo" class="btn btn-secondary">
+                📁 Загрузить видео
+            </button>
+            
+            <button id="showInstructions" class="btn btn-secondary">
+                ❓ Инструкция по жестам
+            </button>
+            
+            <div style="margin-top: 30px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+                <p><strong>✋ Управление жестами:</strong></p>
+                <p>• Ладонь открыта — пауза</p>
+                <p>• Кулак — воспроизведение</p>
+                <p>• Рука сжата — перемещение</p>
+            </div>
+        </div>
+    </div>
 
-<script>
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+    <!-- Экран загрузки видео -->
+    <div id="uploadScreen" class="screen">
+        <button class="back-btn" id="backFromUpload">← Назад</button>
+        <div class="menu-content">
+            <h1>📁 Загрузка видео</h1>
+            <p class="subtitle">Выберите видео для AR (или используйте YouTube URL)</p>
+            
+            <div class="upload-area" id="dropArea">
+                <div style="font-size: 48px; margin-bottom: 15px;">📹</div>
+                <h3>Нажмите для выбора видео</h3>
+                <p style="color: #a5b4cb; margin: 10px 0;">Или перетащите файл сюда</p>
+                <p style="font-size: 14px; color: #7a8ca5;">MP4, WebM, YouTube ссылка</p>
+            </div>
+            
+            <input type="file" id="videoInput" class="file-input" accept="video/*">
+            
+            <div style="margin-top: 20px; padding: 15px; background: rgba(76,201,240,0.1); border-radius: 10px;">
+                <h3 style="color: #4cc9f0; margin-bottom: 10px;">🎬 Или используйте YouTube</h3>
+                <input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." 
+                       style="width: 100%; padding: 15px; border-radius: 10px; border: 2px solid #4cc9f0; background: rgba(255,255,255,0.1); color: white; font-size: 16px;">
+                <button id="useYoutube" class="btn" style="margin-top: 10px; background: #ff0000; color: white;">
+                    📺 Использовать YouTube
+                </button>
+            </div>
+            
+            <div class="video-preview" id="videoPreview">
+                <h3>👁️ Предпросмотр:</h3>
+                <video id="previewVideo" controls></video>
+                <button id="useThisVideo" class="btn btn-primary">
+                    ✅ Использовать это видео
+                </button>
+            </div>
+        </div>
+    </div>
 
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+    <!-- Экран инструкций -->
+    <div id="instructionsScreen" class="screen">
+        <button class="back-btn" id="backFromInstructions">← Назад</button>
+        <div class="menu-content">
+            <h1>📖 Инструкция по жестам</h1>
+            
+            <div class="instruction-step">
+                <h3>✋ Открытая ладонь</h3>
+                <p>Видео ставится на паузу. Покажите открытую ладонь камере.</p>
+            </div>
+            
+            <div class="instruction-step">
+                <h3>✊ Сжатый кулак</h3>
+                <p>Видео начинает воспроизводиться. Сожмите руку в кулак.</p>
+            </div>
+            
+            <div class="instruction-step">
+                <h3>🤏 Щепотка (большой и указательный)</h3>
+                <p>Захват и перемещение видео. Соедините большой и указательный палец.</p>
+            </div>
+            
+            <div class="instruction-step">
+                <h3>🖐️ Два пальца вверх</h3>
+                <p>Увеличение громкости. Покажите "V" знак.</p>
+            </div>
+            
+            <div class="instruction-step">
+                <h3>👇 Два пальца вниз</h3>
+                <p>Уменьшение громкости. Опустите два пальца вниз.</p>
+            </div>
+            
+            <div style="margin-top: 25px; padding: 20px; background: rgba(76, 201, 240, 0.1); border-radius: 12px;">
+                <h3 style="color: #4cc9f0; margin-bottom: 10px;">💡 Советы:</h3>
+                <p>• Держите руку хорошо освещенной</p>
+                <p>• Работайте на расстоянии 0.5-1 метра от камеры</p>
+                <p>• Делайте четкие, уверенные жесты</p>
+            </div>
+        </div>
+    </div>
 
-const hands = new Hands({
-  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
-});
+    <!-- AR экран -->
+    <div id="arScreen" class="screen">
+        <canvas id="arCanvas"></canvas>
+        <canvas id="handCanvas"></canvas>
+        
+        <button class="back-btn" id="backFromAR">← Назад</button>
+        
+        <div class="gesture-info">
+            <h3>✋ Управление жестами:</h3>
+            <ul class="gesture-list">
+                <li>Открытая ладонь — Пауза</li>
+                <li>Сжатый кулак — Play</li>
+                <li>Щепотка — Перемещение</li>
+                <li>V знак — Громкость +</li>
+                <li>Опущенные пальцы — Громкость -</li>
+            </ul>
+        </div>
+        
+        <div class="ar-controls">
+            <button class="control-btn" id="playPauseBtn" title="Воспроизвести/Пауза">⏸️</button>
+            <button class="control-btn" id="volumeBtn" title="Вкл/Выкл звук">🔊</button>
+            <button class="control-btn" id="resetBtn" title="Сбросить позицию">🔄</button>
+        </div>
+    </div>
 
-hands.setOptions({
-  maxNumHands: 1,
-  minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.7
-});
+    <!-- Сообщения -->
+    <div id="message"></div>
 
-hands.onResults(r => {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  if (!r.multiHandLandmarks.length) return;
-  const lm = r.multiHandLandmarks[0];
-  drawConnectors(ctx, lm, HAND_CONNECTIONS, {color:"#00ff00"});
-  drawLandmarks(ctx, lm, {color:"#ff0000"});
-});
+    <script>
+        // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
+        let currentVideoUrl = null;
+        let currentVideoType = null; // 'file', 'youtube'
+        let isARActive = false;
+        let handDetector = null;
+        let scene, camera, renderer, videoTexture, videoMesh;
+        let handCanvas, handCtx;
+        let isGrabbing = false;
+        let videoElement = null;
+        let videoPaused = false;
 
-const camera = new Camera(video, {
-  facingMode: "environment",
-  width: 1280,
-  height: 720,
-  onFrame: async () => {
-    await hands.send({ image: video });
-  }
-});
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Инициализация приложения...');
+            
+            // Загружаем систему распознавания рук
+            await initializeHandTracking();
+            
+            // Настраиваем обработчики
+            setupEventListeners();
+            
+            // Переходим на главный экран
+            switchScreen('mainScreen');
+            
+            showMessage('✅ Система жестов готова!', 'success');
+        });
 
-camera.start();
-</script>
+        // ========== ИНИЦИАЛИЗАЦИЯ РАСПОЗНАВАНИЯ РУК ==========
+        async function initializeHandTracking() {
+            console.log('✋ Инициализация MediaPipe Hands...');
+            
+            handCanvas = document.getElementById('handCanvas');
+            handCtx = handCanvas.getContext('2d');
+            
+            handDetector = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+            
+            handDetector.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.7
+            });
+            
+            handDetector.onResults(onHandResults);
+            
+            // Начинаем захват с веб-камеры
+            const videoElement = document.createElement('video');
+            videoElement.style.display = 'none';
+            document.body.appendChild(videoElement);
+            
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    if (isARActive) {
+                        await handDetector.send({ image: videoElement });
+                    }
+                },
+                width: 640,
+                height: 480
+            });
+            
+            await camera.start();
+            console.log('✅ Распознавание рук инициализировано');
+        }
 
+        // ========== ОБРАБОТКА РЕЗУЛЬТАТОВ РАСПОЗНАВАНИЯ РУК ==========
+        function onHandResults(results) {
+            // Очищаем canvas для отрисовки
+            handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
+            
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // Отрисовываем руку
+                drawHand(landmarks);
+                
+                // Анализируем жесты
+                analyzeGestures(landmarks);
+            }
+        }
+
+        // ========== ОТРИСОВКА РУКИ ==========
+        function drawHand(landmarks) {
+            handCtx.strokeStyle = '#00FF00';
+            handCtx.lineWidth = 2;
+            
+            // Соединяем точки руки
+            const connections = [
+                [0, 1], [1, 2], [2, 3], [3, 4], // Большой палец
+                [0, 5], [5, 6], [6, 7], [7, 8], // Указательный
+                [0, 9], [9, 10], [10, 11], [11, 12], // Средний
+                [0, 13], [13, 14], [14, 15], [15, 16], // Безымянный
+                [0, 17], [17, 18], [18, 19], [19, 20] // Мизинец
+            ];
+            
+            connections.forEach(connection => {
+                const [i, j] = connection;
+                const start = landmarks[i];
+                const end = landmarks[j];
+                
+                handCtx.beginPath();
+                handCtx.moveTo(start.x * handCanvas.width, start.y * handCanvas.height);
+                handCtx.lineTo(end.x * handCanvas.width, end.y * handCanvas.height);
+                handCtx.stroke();
+            });
+            
+            // Рисуем точки
+            landmarks.forEach(landmark => {
+                handCtx.beginPath();
+                handCtx.arc(
+                    landmark.x * handCanvas.width,
+                    landmark.y * handCanvas.height,
+                    3, 0, Math.PI * 2
+                );
+                handCtx.fillStyle = '#FF0000';
+                handCtx.fill();
+            });
+        }
+
+        // ========== АНАЛИЗ ЖЕСТОВ ==========
+        function analyzeGestures(landmarks) {
+            if (!videoMesh || !videoElement) return;
+            
+            // Получаем координаты ключевых точек
+            const thumbTip = landmarks[4];
+            const indexTip = landmarks[8];
+            const middleTip = landmarks[12];
+            const ringTip = landmarks[16];
+            const pinkyTip = landmarks[20];
+            const wrist = landmarks[0];
+            
+            // Вычисляем расстояние между кончиками пальцев
+            const pinchDistance = Math.sqrt(
+                Math.pow(thumbTip.x - indexTip.x, 2) + 
+                Math.pow(thumbTip.y - indexTip.y, 2)
+            );
+            
+            // ЖЕСТ 1: Щепотка (захват и перемещение)
+            if (pinchDistance < 0.05) {
+                if (!isGrabbing) {
+                    isGrabbing = true;
+                    showMessage('🤏 Захвачено для перемещения', 'info');
+                }
+                
+                // Преобразуем координаты руки в 3D пространство
+                const screenX = wrist.x * handCanvas.width;
+                const screenY = wrist.y * handCanvas.height;
+                
+                // Обновляем позицию видео
+                updateVideoPosition(screenX, screenY);
+            } else {
+                if (isGrabbing) {
+                    isGrabbing = false;
+                    showMessage('🖐️ Отпущено', 'info');
+                }
+            }
+            
+            // ЖЕСТ 2: Открытая ладонь (пауза)
+            const fingersUp = countFingersUp(landmarks);
+            if (fingersUp >= 4) { // Все пальцы кроме большого
+                if (!videoPaused) {
+                    videoElement.pause();
+                    videoPaused = true;
+                    showMessage('✋ Пауза', 'info');
+                }
+            }
+            
+            // ЖЕСТ 3: Кулак (воспроизведение)
+            if (fingersUp <= 1) { // Все пальцы сжаты
+                if (videoPaused) {
+                    videoElement.play();
+                    videoPaused = false;
+                    showMessage('✊ Воспроизведение', 'info');
+                }
+            }
+            
+            // ЖЕСТ 4: V знак (громкость +)
+            if (isVSign(landmarks)) {
+                if (videoElement.volume < 1) {
+                    videoElement.volume = Math.min(1, videoElement.volume + 0.1);
+                    showMessage('🔊 Громкость +', 'info');
+                }
+            }
+            
+            // ЖЕСТ 5: Опущенные пальцы (громкость -)
+            if (isFingersDown(landmarks)) {
+                if (videoElement.volume > 0) {
+                    videoElement.volume = Math.max(0, videoElement.volume - 0.1);
+                    showMessage('🔉 Громкость -', 'info');
+                }
+            }
+        }
+
+        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ЖЕСТОВ ==========
+        function countFingersUp(landmarks) {
+            const fingerTips = [8, 12, 16, 20]; // Кончики пальцев (без большого)
+            const fingerMCPs = [5, 9, 13, 17]; // Суставы пальцев
+            
+            let count = 0;
+            
+            for (let i = 0; i < 4; i++) {
+                const tip = landmarks[fingerTips[i]];
+                const mcp = landmarks[fingerMCPs[i]];
+                
+                if (tip.y < mcp.y) { // Палец поднят
+                    count++;
+                }
+            }
+            
+            return count;
+        }
+
+        function isVSign(landmarks) {
+            const indexTip = landmarks[8];
+            const middleTip = landmarks[12];
+            const ringTip = landmarks[16];
+            const pinkyTip = landmarks[20];
+            
+            // Проверяем, что указательный и средний пальцы подняты,
+            // а безымянный и мизинец опущены
+            return (indexTip.y < landmarks[6].y) && // Указательный поднят
+                   (middleTip.y < landmarks[10].y) && // Средний поднят
+                   (ringTip.y > landmarks[14].y) && // Безымянный опущен
+                   (pinkyTip.y > landmarks[18].y); // Мизинец опущен
+        }
+
+        function isFingersDown(landmarks) {
+            const fingerTips = [8, 12, 16, 20];
+            const fingerMCPs = [5, 9, 13, 17];
+            
+            let count = 0;
+            
+            for (let i = 0; i < 4; i++) {
+                const tip = landmarks[fingerTips[i]];
+                const mcp = landmarks[fingerMCPs[i]];
+                
+                if (tip.y > mcp.y) { // Палец опущен
+                    count++;
+                }
+            }
+            
+            return count >= 3; // Большинство пальцев опущено
+        }
+
+        // ========== ОБНОВЛЕНИЕ ПОЗИЦИИ ВИДЕО ==========
+        function updateVideoPosition(screenX, screenY) {
+            if (!videoMesh) return;
+            
+            // Преобразуем координаты экрана в 3D
+            const x = (screenX / handCanvas.width) * 2 - 1;
+            const y = -(screenY / handCanvas.height) * 2 + 1;
+            
+            // Обновляем позицию видео
+            videoMesh.position.x = x * 3;
+            videoMesh.position.y = y * 2;
+        }
+
+        // ========== ИНИЦИАЛИЗАЦИЯ THREE.JS И AR ==========
+        async function initAR() {
+            console.log('🚀 Инициализация AR сцены...');
+            
+            const arCanvas = document.getElementById('arCanvas');
+            
+            // Создаем сцену
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            
+            // Создаем камеру
+            camera = new THREE.PerspectiveCamera(
+                60, window.innerWidth / window.innerHeight, 0.1, 1000
+            );
+            camera.position.set(0, 1.6, 3);
+            
+            // Создаем рендерер
+            renderer = new THREE.WebGLRenderer({
+                canvas: arCanvas,
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            // Добавляем свет
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+            
+            // Загружаем видео
+            await loadVideoInAR();
+            
+            // Запускаем анимацию
+            animate();
+            
+            // Обработка изменения размера окна
+            window.addEventListener('resize', onWindowResize);
+            
+            console.log('✅ AR сцена инициализирована');
+        }
+
+        // ========== ЗАГРУЗКА ВИДЕО В AR ==========
+        async function loadVideoInAR() {
+            if (!currentVideoUrl) {
+                // Используем тестовое видео по умолчанию
+                currentVideoUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+                currentVideoType = 'file';
+            }
+            
+            // Создаем видео элемент
+            videoElement = document.createElement('video');
+            videoElement.src = currentVideoUrl;
+            videoElement.crossOrigin = 'anonymous';
+            videoElement.loop = true;
+            videoElement.muted = true;
+            videoElement.playsInline = true;
+            
+            // Ждем загрузки метаданных видео
+            await new Promise((resolve) => {
+                videoElement.addEventListener('loadedmetadata', () => {
+                    videoElement.play().then(resolve).catch(() => {
+                        // Если автовоспроизведение заблокировано, продолжаем
+                        resolve();
+                    });
+                });
+                
+                videoElement.load();
+            });
+            
+            // Создаем текстуру из видео
+            videoTexture = new THREE.VideoTexture(videoElement);
+            videoTexture.minFilter = THREE.LinearFilter;
+            videoTexture.magFilter = THREE.LinearFilter;
+            videoTexture.format = THREE.RGBFormat;
+            
+            // Создаем плоскость для видео
+            const videoWidth = 3;
+            const videoHeight = videoWidth * (videoElement.videoHeight / videoElement.videoWidth);
+            
+            const geometry = new THREE.PlaneGeometry(videoWidth, videoHeight);
+            const material = new THREE.MeshBasicMaterial({
+                map: videoTexture,
+                side: THREE.DoubleSide,
+                transparent: true
+            });
+            
+            videoMesh = new THREE.Mesh(geometry, material);
+            videoMesh.position.set(0, 0, -5);
+            scene.add(videoMesh);
+            
+            console.log('✅ Видео загружено в AR');
+        }
+
+        // ========== АНИМАЦИЯ ==========
+        function animate() {
+            if (!isARActive) return;
+            
+            requestAnimationFrame(animate);
+            
+            // Обновляем видео текстуру
+            if (videoTexture) {
+                videoTexture.needsUpdate = true;
+            }
+            
+            // Вращаем видео для лучшего обзора
+            if (videoMesh) {
+                videoMesh.lookAt(camera.position);
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // ========== ОБРАБОТКА ИЗМЕНЕНИЯ РАЗМЕРА ==========
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Также обновляем canvas для рук
+            handCanvas.width = window.innerWidth;
+            handCanvas.height = window.innerHeight;
+        }
+
+        // ========== УПРАВЛЕНИЕ ЭКРАНАМИ ==========
+        function switchScreen(screenId) {
+            const screens = ['loadingScreen', 'mainScreen', 'uploadScreen', 'instructionsScreen', 'arScreen'];
+            screens.forEach(id => {
+                document.getElementById(id)?.classList.remove('active');
+            });
+            
+            document.getElementById(screenId)?.classList.add('active');
+            
+            // Обработка перехода на AR экран
+            if (screenId === 'arScreen') {
+                startARMode();
+            } else if (isARActive) {
+                stopARMode();
+            }
+        }
+
+        function startARMode() {
+            console.log('🚀 Запуск AR режима...');
+            isARActive = true;
+            
+            // Инициализируем AR сцену
+            initAR();
+            
+            // Обновляем размеры canvas
+            onWindowResize();
+            
+            showMessage('AR режим с жестовым управлением активирован!', 'success');
+        }
+
+        function stopARMode() {
+            console.log('🛑 Остановка AR режима...');
+            isARActive = false;
+            
+            // Останавливаем видео
+            if (videoElement) {
+                videoElement.pause();
+            }
+            
+            // Очищаем сцену
+            if (scene) {
+                scene.clear();
+            }
+        }
+
+        // ========== ОБРАБОТКА ЗАГРУЗКИ ВИДЕО ==========
+        function setupEventListeners() {
+            // Навигация
+            document.getElementById('startAR').addEventListener('click', () => {
+                if (!currentVideoUrl) {
+                    showMessage('Сначала загрузите видео!', 'warning');
+                    return;
+                }
+                switchScreen('arScreen');
+            });
+            
+            document.getElementById('uploadVideo').addEventListener('click', () => switchScreen('uploadScreen'));
+            document.getElementById('showInstructions').addEventListener('click', () => switchScreen('instructionsScreen'));
+            
+            // Кнопки "Назад"
+            document.getElementById('backFromUpload').addEventListener('click', () => switchScreen('mainScreen'));
+            document.getElementById('backFromInstructions').addEventListener('click', () => switchScreen('mainScreen'));
+            document.getElementById('backFromAR').addEventListener('click', () => switchScreen('mainScreen'));
+            
+            // Загрузка видео
+            const videoInput = document.getElementById('videoInput');
+            const dropArea = document.getElementById('dropArea');
+            
+            videoInput.addEventListener('change', handleVideoSelect);
+            dropArea.addEventListener('click', () => videoInput.click());
+            
+            // Drag and drop
+            dropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropArea.classList.add('dragover');
+            });
+            
+            dropArea.addEventListener('dragleave', () => {
+                dropArea.classList.remove('dragover');
+            });
+            
+            dropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropArea.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleVideoFile(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // Использование YouTube
+            document.getElementById('useYoutube').addEventListener('click', () => {
+                const url = document.getElementById('youtubeUrl').value;
+                if (url) {
+                    // Преобразуем YouTube URL в ссылку на видео
+                    const videoId = extractYouTubeId(url);
+                    if (videoId) {
+                        currentVideoUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0`;
+                        currentVideoType = 'youtube';
+                        
+                        // Показываем предпросмотр
+                        const previewVideo = document.getElementById('previewVideo');
+                        previewVideo.src = currentVideoUrl;
+                        document.getElementById('videoPreview').classList.add('active');
+                        
+                        showMessage('✅ YouTube видео загружено!', 'success');
+                    } else {
+                        showMessage('❌ Неверная ссылка YouTube', 'error');
+                    }
+                }
+            });
+            
+            // Использование выбранного видео
+            document.getElementById('useThisVideo').addEventListener('click', () => {
+                if (currentVideoUrl) {
+                    showMessage('✅ Видео готово к использованию в AR!', 'success');
+                    switchScreen('mainScreen');
+                }
+            });
+            
+            // Элементы управления AR
+            document.getElementById('playPauseBtn').addEventListener('click', () => {
+                if (videoElement) {
+                    if (videoElement.paused) {
+                        videoElement.play();
+                        showMessage('▶️ Воспроизведение', 'info');
+                    } else {
+                        videoElement.pause();
+                        showMessage('⏸️ Пауза', 'info');
+                    }
+                }
+            });
+            
+            document.getElementById('volumeBtn').addEventListener('click', () => {
+                if (videoElement) {
+                    videoElement.muted = !videoElement.muted;
+                    showMessage(videoElement.muted ? '🔇 Без звука' : '🔊 Звук включен', 'info');
+                }
+            });
+            
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                if (videoMesh) {
+                    videoMesh.position.set(0, 0, -5);
+                    showMessage('🔄 Позиция сброшена', 'info');
+                }
+            });
+        }
+
+        function handleVideoSelect(event) {
+            const file = event.target.files[0];
+            if (file) handleVideoFile(file);
+        }
+
+        function handleVideoFile(file) {
+            if (!file.type.startsWith('video/')) {
+                showMessage('❌ Выберите видео файл', 'error');
+                return;
+            }
+            
+            currentVideoFile = file;
+            currentVideoUrl = URL.createObjectURL(file);
+            currentVideoType = 'file';
+            
+            // Показываем предпросмотр
+            const previewVideo = document.getElementById('previewVideo');
+            previewVideo.src = currentVideoUrl;
+            document.getElementById('videoPreview').classList.add('active');
+            
+            showMessage('✅ Видео загружено для предпросмотра', 'success');
+            
+            // Автовоспроизведение предпросмотра
+            previewVideo.play().catch(e => console.log('Автовоспроизведение заблокировано'));
+        }
+
+        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+        function extractYouTubeId(url) {
+            const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+
+        function showMessage(text, type = 'info') {
+            const messageEl = document.getElementById('message');
+            if (!messageEl) return;
+            
+            const colors = {
+                'success': '#4CAF50',
+                'error': '#f44336',
+                'warning': '#ff9800',
+                'info': '#2196F3'
+            };
+            
+            messageEl.textContent = text;
+            messageEl.style.backgroundColor = colors[type] || colors.info;
+            messageEl.classList.add('active');
+            
+            setTimeout(() => {
+                messageEl.classList.remove('active');
+            }, 3000);
+            
+            console.log(`💬 ${text}`);
+        }
+
+        // ========== ДЕБАГ ==========
+        window.debugApp = function() {
+            console.log('=== ДЕБАГ ИНФОРМАЦИЯ ===');
+            console.log('Текущее видео URL:', currentVideoUrl);
+            console.log('Тип видео:', currentVideoType);
+            console.log('AR активен:', isARActive);
+            console.log('Захват руки:', isGrabbing);
+            console.log('Видео на паузе:', videoPaused);
+        };
+    </script>
 </body>
 </html>
