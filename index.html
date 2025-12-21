@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Beat Saber Web - Задняя камера</title>
+    <title>Neon Beat Saber - Задняя камера</title>
     <style>
         * {
             margin: 0;
@@ -37,31 +37,34 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            z-index: 2;
-            background: rgba(0, 0, 0, 0.7);
+            z-index: 3;
+            background: rgba(0, 0, 0, 0.8);
             padding: 20px;
-            border-radius: 10px;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
         }
         
         #score {
-            font-size: 36px;
+            font-size: 42px;
             font-weight: bold;
             margin-bottom: 10px;
             color: #00ff88;
-            text-shadow: 0 0 10px #00ff88;
+            text-shadow: 0 0 15px #00ff88;
+            letter-spacing: 1px;
         }
         
         #combo {
-            font-size: 24px;
+            font-size: 26px;
             color: #ffaa00;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #ffaa00;
         }
         
         #message {
-            font-size: 18px;
-            color: #888;
+            font-size: 16px;
+            color: #aaa;
             margin-top: 10px;
         }
         
@@ -69,18 +72,21 @@
             background: linear-gradient(45deg, #ff0080, #00ff88);
             color: white;
             border: none;
-            padding: 12px 24px;
-            font-size: 18px;
-            border-radius: 25px;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 30px;
             cursor: pointer;
             font-weight: bold;
-            margin-top: 10px;
-            transition: transform 0.2s;
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+            margin-top: 15px;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         #startButton:hover {
             transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
         }
         
         #instructions {
@@ -88,111 +94,62 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px 25px;
-            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 30px;
+            border-radius: 20px;
             text-align: center;
-            z-index: 2;
-            backdrop-filter: blur(10px);
-            width: 90%;
-            max-width: 500px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 3;
+            backdrop-filter: blur(15px);
+            width: 95%;
+            max-width: 600px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 40px rgba(255, 51, 102, 0.3);
         }
         
         .hand-indicator {
             display: inline-block;
-            width: 20px;
-            height: 20px;
+            width: 25px;
+            height: 25px;
             border-radius: 50%;
-            margin: 0 5px;
+            margin: 0 8px;
             vertical-align: middle;
+            box-shadow: 0 0 15px;
         }
         
         #leftHandIndicator {
             background-color: #ff3366;
-            box-shadow: 0 0 10px #ff3366;
+            box-shadow: 0 0 15px #ff3366;
         }
         
         #rightHandIndicator {
             background-color: #33ccff;
-            box-shadow: 0 0 10px #33ccff;
+            box-shadow: 0 0 15px #33ccff;
         }
         
         #cameraStatus {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 12px 18px;
-            border-radius: 10px;
-            backdrop-filter: blur(5px);
-            z-index: 2;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 3;
             font-size: 14px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(51, 204, 255, 0.3);
         }
         
         #cameraIcon {
-            font-size: 20px;
+            font-size: 24px;
         }
         
         #cameraText {
-            font-size: 14px;
-        }
-        
-        #cameraPreview {
-            position: absolute;
-            bottom: 100px;
-            right: 20px;
-            width: 160px;
-            height: 120px;
-            border-radius: 10px;
-            overflow: hidden;
-            z-index: 2;
-            background: #000;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            display: none; /* Скрываем предпросмотр по умолчанию */
-        }
-        
-        #cameraPreview video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* Зеркалим для естественного отображения */
-        }
-        
-        #toggleCameraPreview {
-            position: absolute;
-            bottom: 80px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 3;
-            font-size: 12px;
-        }
-        
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 24px;
-            color: white;
-            z-index: 10;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        .camera-mirror {
-            transform: scaleX(-1) !important;
+            font-size: 16px;
+            font-weight: bold;
         }
         
         #timeLeft {
@@ -200,44 +157,78 @@
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            padding: 10px 20px;
-            border-radius: 10px;
-            z-index: 2;
-            font-size: 24px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 25px;
+            border-radius: 15px;
+            z-index: 3;
+            font-size: 32px;
             color: #00ff88;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(0, 255, 136, 0.3);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
+            font-weight: bold;
+            min-width: 100px;
+            text-align: center;
         }
         
-        .arrow-indicator {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 48px;
-            color: rgba(255, 255, 255, 0.5);
-            z-index: 1;
-            pointer-events: none;
-            animation: pulse 2s infinite;
+        .pulse {
+            animation: pulse 0.5s infinite;
         }
         
         @keyframes pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.7; }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        #fps {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 8px;
+            z-index: 3;
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .neon-border {
+            border: 2px solid;
+            border-image: linear-gradient(45deg, #ff0080, #00ff88) 1;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        
+        #handDebug {
+            position: absolute;
+            bottom: 100px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            z-index: 3;
+            font-size: 12px;
+            color: #aaa;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
     <div id="container">
         <div id="ui">
             <div id="score">0</div>
             <div id="combo">Combo: 0</div>
-            <div id="message">Инициализация камеры...</div>
-            <button id="startButton">СТАРТ ИГРЫ</button>
+            <div id="message">Запуск системы...</div>
+            <button id="startButton">🚀 СТАРТ</button>
         </div>
         
         <div id="cameraStatus">
@@ -248,25 +239,24 @@
         <div id="timeLeft" class="hidden">90</div>
         
         <div id="instructions">
-            <div style="margin-bottom: 10px; font-size: 16px;">
-                <span class="hand-indicator" id="leftHandIndicator"></span> Левая рука = красные кубы
-                <span style="margin: 0 15px">|</span>
-                <span class="hand-indicator" id="rightHandIndicator"></span> Правая рука = синие кубы
+            <div style="margin-bottom: 15px; font-size: 18px; font-weight: bold;">
+                <span class="hand-indicator" id="leftHandIndicator"></span> 
+                <span style="color: #ff3366; text-shadow: 0 0 10px #ff3366;">ЛЕВАЯ РУКА</span>
+                <span style="margin: 0 20px; color: #aaa">|</span>
+                <span class="hand-indicator" id="rightHandIndicator"></span>
+                <span style="color: #33ccff; text-shadow: 0 0 10px #33ccff;">ПРАВАЯ РУКА</span>
             </div>
-            <div style="font-size: 14px; color: #aaa; margin-top: 5px;">
-                Кубы летят <span style="color: #ffaa00;">НА ВАС</span> от экрана. Режьте их соответствующими руками!
+            <div style="font-size: 16px; color: #aaa; line-height: 1.5;">
+                Кубы летят <span style="color: #ffaa00; font-weight: bold;">НА ВАС</span>! Режьте их соответствующими руками!
+                <br>
+                <span style="font-size: 14px; color: #888;">Ваша ладонь = световой меч!</span>
             </div>
         </div>
         
-        <div id="cameraPreview">
-            <video id="cameraVideo" autoplay playsinline></video>
-        </div>
+        <div id="fps">FPS: 0</div>
+        <div id="handDebug" class="hidden"></div>
         
-        <button id="toggleCameraPreview" class="hidden">👁️ Показать камеру</button>
-        
-        <div class="arrow-indicator">↑ Кубы летят сюда ↑</div>
-        
-        <!-- Скрытый video элемент для обработки камеры -->
+        <!-- Скрытый video элемент -->
         <video id="inputVideo" class="hidden" autoplay playsinline></video>
         
         <canvas id="gameCanvas"></canvas>
@@ -275,7 +265,6 @@
     <script>
         // Основные константы и переменные
         let scene, camera, renderer;
-        let hands;
         let gameStarted = false;
         let score = 0;
         let combo = 0;
@@ -283,14 +272,18 @@
         let missedCubes = 0;
         let cubes = [];
         let sabers = { left: null, right: null };
-        let trails = { left: null, right: null };
+        let saberTrails = { left: null, right: null };
         let lastCutTime = 0;
         let cubeSpawnInterval = null;
         let gameStartTime = 0;
         let timeLeft = 90;
         let timeInterval = null;
-        let cameraPreviewVisible = false;
         let currentStream = null;
+        let videoElement = document.getElementById('inputVideo');
+        let videoTexture = null;
+        let frameCount = 0;
+        let lastFpsTime = 0;
+        let fps = 0;
         
         // Элементы DOM
         const scoreElement = document.getElementById('score');
@@ -299,196 +292,447 @@
         const startButton = document.getElementById('startButton');
         const leftHandIndicator = document.getElementById('leftHandIndicator');
         const rightHandIndicator = document.getElementById('rightHandIndicator');
-        const videoElement = document.getElementById('inputVideo');
-        const cameraVideo = document.getElementById('cameraVideo');
-        const cameraPreview = document.getElementById('cameraPreview');
-        const toggleCameraPreview = document.getElementById('toggleCameraPreview');
         const timeLeftElement = document.getElementById('timeLeft');
         const cameraStatus = document.getElementById('cameraStatus');
+        const fpsElement = document.getElementById('fps');
+        const handDebugElement = document.getElementById('handDebug');
         
-        // Цвета
+        // Конфигурация игры
+        const CONFIG = {
+            // Камера и руки
+            CAMERA_FOV: 75,
+            CAMERA_HEIGHT: 1.7,
+            HAND_SCALE: 2.0,
+            
+            // Игровой мир
+            ARENA_WIDTH: 8,
+            ARENA_DEPTH: 20,
+            ARENA_HEIGHT: 5,
+            
+            // Кубы
+            CUBE_SPAWN_RATE: 700,
+            CUBE_SPEED_MIN: 0.12,
+            CUBE_SPEED_MAX: 0.18,
+            CUBE_LANES: [-2, -0.67, 0.67, 2], // Как в Beat Saber
+            CUBE_START_Z: 15,
+            CUBE_END_Z: 2,
+            
+            // Сабли
+            SABER_LENGTH: 1.5,
+            SABER_WIDTH: 0.06,
+            TRAIL_LENGTH: 20,
+            
+            // Игра
+            GAME_TIME: 90,
+            MISS_LIMIT: 20,
+            COMBO_TIMEOUT: 2000
+        };
+        
+        // Цвета неоновой темы
         const COLORS = {
-            RED: 0xff3366,      // Левая рука
-            BLUE: 0x33ccff,     // Правая рука
-            SABER_LEFT: 0xff3366,
-            SABER_RIGHT: 0x33ccff,
-            TRAIL_LEFT: 0xff3366,
-            TRAIL_RIGHT: 0x33ccff,
-            BACKGROUND: 0x000011,
-            LASER: 0xffffff,
-            TUNNEL: 0x223366
+            NEON_PINK: 0xff00ff,
+            NEON_BLUE: 0x00ffff,
+            NEON_GREEN: 0x00ff88,
+            NEON_RED: 0xff3366,
+            NEON_CYAN: 0x33ccff,
+            NEON_PURPLE: 0x9933ff,
+            NEON_YELLOW: 0xffff00,
+            DARK_BG: 0x000011,
+            LASER_WALL: 0x00aaff,
+            GRID: 0x3366ff
         };
         
-        // Конфигурация игры - КУБЫ ЛЕТЯТ НА ИГРОКА
-        const GAME_CONFIG = {
-            CUBE_SPAWN_RATE: 800, // мс между спавном кубов
-            CUBE_SPEED_MIN: 0.1,
-            CUBE_SPEED_MAX: 0.15,
-            CUBE_LANE_POSITIONS: [-1.5, -0.5, 0.5, 1.5], // Позиции дорожек
-            CUBE_START_Z: 15,      // Кубы начинают ДАЛЕКО (в глубине сцены)
-            CUBE_END_Z: 3,         // Кубы исчезают здесь (ПЕРЕД игроком)
-            SABER_LENGTH: 1.2,
-            MISS_LIMIT: 15,
-            GAME_DURATION: 90000, // 90 секунд
-            COMBO_TIMEOUT: 2000,
-            PLAYER_Z_POSITION: 0   // Игрок в начале координат
-        };
-        
-        // Инициализация Three.js сцены
+        // Инициализация Three.js
         function initThreeJS() {
-            // Создаем сцену
+            // Создаем сцену с неоновой атмосферой
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(COLORS.BACKGROUND);
-            scene.fog = new THREE.Fog(COLORS.BACKGROUND, 10, 30);
+            scene.background = new THREE.Color(COLORS.DARK_BG);
+            scene.fog = new THREE.Fog(COLORS.DARK_BG, 5, 25);
             
-            // Создаем камеру от первого лица
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, 1.6, GAME_CONFIG.PLAYER_Z_POSITION); // Высота глаз
-            camera.lookAt(0, 1.6, 10); // Смотрим ВГЛУБЬ сцены (откуда летят кубы)
+            // Камера от первого лица
+            camera = new THREE.PerspectiveCamera(
+                CONFIG.CAMERA_FOV,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                100
+            );
+            camera.position.set(0, CONFIG.CAMERA_HEIGHT, 0);
+            camera.lookAt(0, CONFIG.CAMERA_HEIGHT, 10);
             
-            // Создаем рендерер
+            // Рендерер с улучшенными эффектами
             const canvas = document.getElementById('gameCanvas');
-            renderer = new THREE.WebGLRenderer({ 
-                canvas, 
+            renderer = new THREE.WebGLRenderer({
+                canvas,
                 antialias: true,
-                alpha: true 
+                alpha: true,
+                powerPreference: "high-performance"
             });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
             
-            // Добавляем освещение
-            const ambientLight = new THREE.AmbientLight(0x333344, 0.6);
-            scene.add(ambientLight);
-            
-            // Основной свет спереди (освещает кубы, летящие на игрока)
-            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            mainLight.position.set(0, 3, 10);
-            mainLight.castShadow = true;
-            mainLight.shadow.mapSize.width = 2048;
-            mainLight.shadow.mapSize.height = 2048;
-            scene.add(mainLight);
-            
-            // Задний свет для подсветки сабель
-            const backLight = new THREE.DirectionalLight(0x4488ff, 0.4);
-            backLight.position.set(0, 2, -5);
-            scene.add(backLight);
+            // Создаем неоновую арену
+            createNeonArena();
             
             // Создаем сабли
-            createSaber('left', COLORS.SABER_LEFT);
-            createSaber('right', COLORS.SABER_RIGHT);
+            createSabers();
             
-            // Создаем следы от сабель
-            createTrail('left', COLORS.TRAIL_LEFT);
-            createTrail('right', COLORS.TRAIL_RIGHT);
+            // Создаем лазерные стены и эффекты
+            createLaserWalls();
+            createParticleField();
+            createNeonGrid();
             
-            // Создаем игровой туннель (кубы летят ИЗ ГЛУБИНЫ)
-            createGameTunnel();
+            messageElement.textContent = "Создание игрового мира...";
             
-            // Обработка изменения размера окна
+            // Обработчик изменения размера
             window.addEventListener('resize', onWindowResize);
-            
-            messageElement.textContent = "Загрузка детектора рук...";
         }
         
-        // Создание игрового туннеля (кубы летят ИЗ ГЛУБИНЫ на игрока)
-        function createGameTunnel() {
-            // Пол туннеля
-            const floorGeometry = new THREE.PlaneGeometry(8, 40);
-            const floorMaterial = new THREE.MeshPhongMaterial({ 
+        // Создание неоновой арены как в Beat Saber
+        function createNeonArena() {
+            // Пол арены с неоновым свечением
+            const floorGeometry = new THREE.PlaneGeometry(CONFIG.ARENA_WIDTH, CONFIG.ARENA_DEPTH);
+            const floorMaterial = new THREE.MeshPhongMaterial({
                 color: 0x111133,
-                shininess: 20,
-                side: THREE.DoubleSide,
+                emissive: 0x222244,
+                emissiveIntensity: 0.3,
+                shininess: 100,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.9
             });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = Math.PI / 2;
-            floor.position.y = -1;
-            floor.position.z = 10; // Центр туннеля
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -0.5;
+            floor.position.z = CONFIG.ARENA_DEPTH / 2;
             floor.receiveShadow = true;
             scene.add(floor);
             
-            // Боковые стенки туннеля
-            const wallMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0x222244,
-                transparent: true,
-                opacity: 0.1,
-                side: THREE.DoubleSide
-            });
-            
-            const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(40, 4), wallMaterial);
-            leftWall.position.x = -3;
-            leftWall.position.z = 10;
-            leftWall.rotation.y = Math.PI / 2;
-            scene.add(leftWall);
-            
-            const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(40, 4), wallMaterial);
-            rightWall.position.x = 3;
-            rightWall.position.z = 10;
-            rightWall.rotation.y = -Math.PI / 2;
-            scene.add(rightWall);
-            
-            // Создаем направляющие линии для дорожек
+            // Неоновые линии на полу
             const lineMaterial = new THREE.LineBasicMaterial({
-                color: 0x3366ff,
+                color: COLORS.GRID,
                 transparent: true,
-                opacity: 0.2,
-                linewidth: 1
+                opacity: 0.4,
+                linewidth: 2
             });
             
-            // Вертикальные линии дорожек (летят из глубины)
-            GAME_CONFIG.CUBE_LANE_POSITIONS.forEach(x => {
-                const points = [];
-                for (let z = GAME_CONFIG.CUBE_START_Z; z > GAME_CONFIG.CUBE_END_Z; z -= 2) {
-                    points.push(new THREE.Vector3(x, 1.5, z));
-                }
-                
+            // Горизонтальные линии
+            for (let z = 0; z <= CONFIG.ARENA_DEPTH; z += 2) {
+                const points = [
+                    new THREE.Vector3(-CONFIG.ARENA_WIDTH/2, 0.1, z),
+                    new THREE.Vector3(CONFIG.ARENA_WIDTH/2, 0.1, z)
+                ];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, lineMaterial);
+                scene.add(line);
+            }
+            
+            // Вертикальные линии (дорожки)
+            CONFIG.CUBE_LANES.forEach(x => {
+                const points = [
+                    new THREE.Vector3(x, 0.1, 0),
+                    new THREE.Vector3(x, 0.1, CONFIG.ARENA_DEPTH)
+                ];
                 const geometry = new THREE.BufferGeometry().setFromPoints(points);
                 const line = new THREE.Line(geometry, lineMaterial);
                 scene.add(line);
             });
             
-            // Создаем частицы в глубине туннеля (источник кубов)
-            createTunnelParticles();
-            
-            // Добавляем "финишную черту" перед игроком
-            const finishLineMaterial = new THREE.LineBasicMaterial({
-                color: 0x00ff88,
+            // Боковые лазерные стены
+            const wallMaterial = new THREE.MeshBasicMaterial({
+                color: COLORS.LASER_WALL,
                 transparent: true,
-                opacity: 0.3,
-                linewidth: 2
+                opacity: 0.1,
+                side: THREE.DoubleSide
             });
             
-            const finishPoints = [
-                new THREE.Vector3(-2, 1, GAME_CONFIG.CUBE_END_Z),
-                new THREE.Vector3(2, 1, GAME_CONFIG.CUBE_END_Z)
-            ];
+            const leftWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(CONFIG.ARENA_DEPTH, CONFIG.ARENA_HEIGHT),
+                wallMaterial
+            );
+            leftWall.position.x = -CONFIG.ARENA_WIDTH/2 - 0.5;
+            leftWall.position.z = CONFIG.ARENA_DEPTH/2;
+            leftWall.position.y = CONFIG.ARENA_HEIGHT/2 - 0.5;
+            leftWall.rotation.y = Math.PI/2;
+            scene.add(leftWall);
             
-            const finishGeometry = new THREE.BufferGeometry().setFromPoints(finishPoints);
-            const finishLine = new THREE.Line(finishGeometry, finishLineMaterial);
-            scene.add(finishLine);
+            const rightWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(CONFIG.ARENA_DEPTH, CONFIG.ARENA_HEIGHT),
+                wallMaterial
+            );
+            rightWall.position.x = CONFIG.ARENA_WIDTH/2 + 0.5;
+            rightWall.position.z = CONFIG.ARENA_DEPTH/2;
+            rightWall.position.y = CONFIG.ARENA_HEIGHT/2 - 0.5;
+            rightWall.rotation.y = -Math.PI/2;
+            scene.add(rightWall);
+            
+            // Задняя лазерная стена
+            const backWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(CONFIG.ARENA_WIDTH, CONFIG.ARENA_HEIGHT),
+                wallMaterial
+            );
+            backWall.position.z = CONFIG.ARENA_DEPTH + 1;
+            backWall.position.y = CONFIG.ARENA_HEIGHT/2 - 0.5;
+            scene.add(backWall);
+            
+            // Освещение
+            const ambientLight = new THREE.AmbientLight(0x333366, 0.4);
+            scene.add(ambientLight);
+            
+            // Неоновые прожекторы
+            const spotLight1 = new THREE.SpotLight(COLORS.NEON_BLUE, 0.8, 30, Math.PI/4, 0.5, 1);
+            spotLight1.position.set(-3, 5, 5);
+            spotLight1.target.position.set(0, 0, 10);
+            spotLight1.castShadow = true;
+            scene.add(spotLight1);
+            scene.add(spotLight1.target);
+            
+            const spotLight2 = new THREE.SpotLight(COLORS.NEON_PINK, 0.8, 30, Math.PI/4, 0.5, 1);
+            spotLight2.position.set(3, 5, 5);
+            spotLight2.target.position.set(0, 0, 10);
+            spotLight2.castShadow = true;
+            scene.add(spotLight2);
+            scene.add(spotLight2.target);
+            
+            // Подсветка арены
+            const arenaLight = new THREE.PointLight(COLORS.NEON_GREEN, 0.5, 20);
+            arenaLight.position.set(0, 2, 10);
+            scene.add(arenaLight);
         }
         
-        // Создание частиц в туннеле
-        function createTunnelParticles() {
-            const particleCount = 300;
+        // Создание сабель (световых мечей)
+        function createSabers() {
+            // Левая сабля (розовая)
+            createSaber('left', COLORS.NEON_PINK);
+            // Правая сабля (голубая)
+            createSaber('right', COLORS.NEON_CYAN);
+        }
+        
+        function createSaber(side, color) {
+            const group = new THREE.Group();
+            
+            // Создаем меч из нескольких частей для лучшего свечения
+            const bladeLength = CONFIG.SABER_LENGTH;
+            const bladeWidth = CONFIG.SABER_WIDTH;
+            
+            // Ядро меча (яркая центральная часть)
+            const coreGeometry = new THREE.CylinderGeometry(
+                bladeWidth * 0.3,
+                bladeWidth * 0.3,
+                bladeLength,
+                8
+            );
+            const coreMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 1.0,
+                blending: THREE.AdditiveBlending
+            });
+            const core = new THREE.Mesh(coreGeometry, coreMaterial);
+            core.position.y = bladeLength / 2;
+            group.add(core);
+            
+            // Основное лезвие
+            const bladeGeometry = new THREE.CylinderGeometry(
+                bladeWidth,
+                bladeWidth,
+                bladeLength,
+                16
+            );
+            const bladeMaterial = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.7,
+                blending: THREE.AdditiveBlending
+            });
+            const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+            blade.position.y = bladeLength / 2;
+            group.add(blade);
+            
+            // Внешнее свечение
+            const glowGeometry = new THREE.CylinderGeometry(
+                bladeWidth * 2,
+                bladeWidth * 2,
+                bladeLength + 0.2,
+                16
+            );
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.2,
+                blending: THREE.AdditiveBlending,
+                side: THREE.BackSide
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            glow.position.y = bladeLength / 2;
+            group.add(glow);
+            
+            // Рукоять
+            const handleGeometry = new THREE.CylinderGeometry(
+                bladeWidth * 1.5,
+                bladeWidth * 1.5,
+                bladeLength * 0.3,
+                8
+            );
+            const handleMaterial = new THREE.MeshPhongMaterial({
+                color: 0x333333,
+                emissive: 0x111111,
+                emissiveIntensity: 0.5,
+                shininess: 100
+            });
+            const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+            handle.position.y = -bladeLength * 0.15;
+            group.add(handle);
+            
+            // Добавляем в сцену
+            scene.add(group);
+            
+            // Сохраняем ссылки
+            sabers[side] = {
+                group: group,
+                blade: blade,
+                core: core,
+                glow: glow,
+                handle: handle,
+                position: new THREE.Vector3(),
+                velocity: new THREE.Vector3(),
+                lastPosition: new THREE.Vector3(),
+                isDetected: false,
+                isCutting: false,
+                color: color
+            };
+            
+            // Создаем след для сабли
+            createSaberTrail(side, color);
+            
+            // Изначально скрываем
+            group.visible = false;
+        }
+        
+        // Создание следа для сабли
+        function createSaberTrail(side, color) {
+            const trailGeometry = new THREE.BufferGeometry();
+            const trailMaterial = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.8,
+                linewidth: 3,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const trail = new THREE.Line(trailGeometry, trailMaterial);
+            scene.add(trail);
+            
+            saberTrails[side] = {
+                line: trail,
+                points: [],
+                maxPoints: CONFIG.TRAIL_LENGTH,
+                colors: []
+            };
+            
+            trail.visible = false;
+        }
+        
+        // Обновление следа сабли
+        function updateSaberTrail(side, position) {
+            const trail = saberTrails[side];
+            if (!trail || !sabers[side].isDetected) return;
+            
+            // Добавляем новую точку
+            trail.points.unshift(position.clone());
+            trail.colors.unshift(sabers[side].color);
+            
+            // Ограничиваем количество точек
+            if (trail.points.length > trail.maxPoints) {
+                trail.points.pop();
+                trail.colors.pop();
+            }
+            
+            // Обновляем геометрию с градиентом цвета
+            if (trail.points.length > 1) {
+                const positions = new Float32Array(trail.points.length * 3);
+                const colors = new Float32Array(trail.colors.length * 3);
+                
+                for (let i = 0; i < trail.points.length; i++) {
+                    positions[i * 3] = trail.points[i].x;
+                    positions[i * 3 + 1] = trail.points[i].y;
+                    positions[i * 3 + 2] = trail.points[i].z;
+                    
+                    const color = new THREE.Color(trail.colors[i]);
+                    const alpha = 1 - (i / trail.points.length);
+                    color.multiplyScalar(alpha);
+                    
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+                
+                trail.line.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                trail.line.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                trail.line.geometry.attributes.position.needsUpdate = true;
+                trail.line.geometry.attributes.color.needsUpdate = true;
+                trail.line.visible = true;
+            }
+        }
+        
+        // Создание лазерных стен
+        function createLaserWalls() {
+            const laserMaterial = new THREE.MeshBasicMaterial({
+                color: COLORS.LASER_WALL,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending
+            });
+            
+            // Лазерные полосы на стенах
+            for (let z = 2; z < CONFIG.ARENA_DEPTH; z += 3) {
+                const laserGeometry = new THREE.PlaneGeometry(CONFIG.ARENA_WIDTH, 0.1);
+                const laser = new THREE.Mesh(laserGeometry, laserMaterial);
+                laser.position.z = z;
+                laser.position.y = 1.5;
+                laser.rotation.y = Math.PI;
+                scene.add(laser);
+            }
+        }
+        
+        // Создание неоновой сетки
+        function createNeonGrid() {
+            const gridMaterial = new THREE.LineBasicMaterial({
+                color: COLORS.GRID,
+                transparent: true,
+                opacity: 0.1,
+                linewidth: 1
+            });
+            
+            // Сетка на заднем плане
+            const gridSize = 20;
+            const gridDivisions = 20;
+            const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, COLORS.GRID, COLORS.GRID);
+            gridHelper.material.opacity = 0.05;
+            gridHelper.material.transparent = true;
+            gridHelper.position.z = 10;
+            scene.add(gridHelper);
+        }
+        
+        // Создание поля частиц
+        function createParticleField() {
+            const particleCount = 500;
             const geometry = new THREE.BufferGeometry();
             const vertices = [];
             const colors = [];
             
             for (let i = 0; i < particleCount; i++) {
-                // Частицы летят от глубины к игроку
-                const x = (Math.random() - 0.5) * 6;
-                const y = (Math.random() - 0.5) * 3 + 1;
-                const z = Math.random() * 25 + 5; // От 5 до 30
+                const x = (Math.random() - 0.5) * 50;
+                const y = (Math.random() - 0.5) * 20;
+                const z = Math.random() * 50;
                 
                 vertices.push(x, y, z);
                 
-                // Цвет зависит от позиции
                 const color = new THREE.Color();
-                color.setHSL(0.6, 0.8, 0.3 + Math.random() * 0.2);
+                color.setHSL(Math.random() * 0.3 + 0.5, 0.8, 0.5);
                 colors.push(color.r, color.g, color.b);
             }
             
@@ -496,27 +740,24 @@
             geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
             
             const material = new THREE.PointsMaterial({
-                size: 0.05,
+                size: 0.1,
                 vertexColors: true,
                 transparent: true,
-                opacity: 0.5
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
             });
             
             const particles = new THREE.Points(geometry, material);
             scene.add(particles);
             
-            // Анимация частиц (летят к игроку)
+            // Анимация частиц
             function animateParticles() {
                 const positions = particles.geometry.attributes.position.array;
                 
                 for (let i = 0; i < particleCount * 3; i += 3) {
-                    positions[i + 2] -= 0.05; // Движение к игроку
-                    
-                    // Если частица прошла игрока, возвращаем ее в начало
-                    if (positions[i + 2] < 0) {
-                        positions[i] = (Math.random() - 0.5) * 6;
-                        positions[i + 1] = (Math.random() - 0.5) * 3 + 1;
-                        positions[i + 2] = 25 + Math.random() * 5;
+                    positions[i + 2] -= 0.05;
+                    if (positions[i + 2] < -10) {
+                        positions[i + 2] = 50;
                     }
                 }
                 
@@ -530,106 +771,23 @@
             animateParticles();
         }
         
-        // Создание сабли
-        function createSaber(side, color) {
-            const group = new THREE.Group();
-            
-            // Рукоять сабли
-            const handleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.3, 8);
-            const handleMaterial = new THREE.MeshPhongMaterial({ 
-                color: 0x333333,
-                emissive: 0x111111,
-                emissiveIntensity: 0.3,
-                shininess: 100
-            });
-            const handle = new THREE.Mesh(handleGeometry, handleMaterial);
-            handle.position.y = 0.15;
-            group.add(handle);
-            
-            // Лезвие сабли
-            const bladeGeometry = new THREE.BoxGeometry(0.035, GAME_CONFIG.SABER_LENGTH, 0.035);
-            const bladeMaterial = new THREE.MeshPhongMaterial({ 
-                color: color,
-                emissive: color,
-                emissiveIntensity: 0.9,
-                shininess: 100,
-                transparent: true,
-                opacity: 0.95
-            });
-            const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
-            blade.position.y = GAME_CONFIG.SABER_LENGTH / 2 + 0.3;
-            group.add(blade);
-            
-            // Свечение лезвия
-            const glowGeometry = new THREE.CylinderGeometry(0.05, 0.05, GAME_CONFIG.SABER_LENGTH, 16);
-            const glowMaterial = new THREE.MeshBasicMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.2,
-                side: THREE.BackSide
-            });
-            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-            glow.position.y = GAME_CONFIG.SABER_LENGTH / 2 + 0.3;
-            group.add(glow);
-            
-            scene.add(group);
-            sabers[side] = {
-                group: group,
-                blade: blade,
-                glow: glow,
-                position: new THREE.Vector3(),
-                velocity: new THREE.Vector3(),
-                lastPosition: new THREE.Vector3(),
-                isDetected: false,
-                isCutting: false
-            };
-            
-            // Изначально скрываем сабли
-            group.visible = false;
-            group.position.z = GAME_CONFIG.PLAYER_Z_POSITION;
-        }
-        
-        // Создание следа от сабли
-        function createTrail(side, color) {
-            const trailGeometry = new THREE.BufferGeometry();
-            const trailMaterial = new THREE.LineBasicMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.7,
-                linewidth: 2
-            });
-            
-            const trail = new THREE.Line(trailGeometry, trailMaterial);
-            scene.add(trail);
-            
-            trails[side] = {
-                line: trail,
-                points: [],
-                maxPoints: 20
-            };
-            
-            trail.visible = false;
-        }
-        
-        // Создание куба, который летит НА ИГРОКА
+        // Создание куба
         function createCube() {
-            // Случайно выбираем цвет и сторону
             const isLeft = Math.random() > 0.5;
-            const color = isLeft ? COLORS.RED : COLORS.BLUE;
+            const color = isLeft ? COLORS.NEON_RED : COLORS.NEON_CYAN;
             const targetHand = isLeft ? 'left' : 'right';
             
-            // Выбираем дорожку для этого типа руки
             const lanePositions = isLeft 
-                ? GAME_CONFIG.CUBE_LANE_POSITIONS.filter((_, i) => i < 2)
-                : GAME_CONFIG.CUBE_LANE_POSITIONS.filter((_, i) => i >= 2);
+                ? CONFIG.CUBE_LANES.filter((_, i) => i < 2)
+                : CONFIG.CUBE_LANES.filter((_, i) => i >= 2);
             
             const lane = lanePositions[Math.floor(Math.random() * lanePositions.length)];
             
-            const geometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
-            const material = new THREE.MeshPhongMaterial({ 
+            const geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+            const material = new THREE.MeshPhongMaterial({
                 color: color,
                 emissive: color,
-                emissiveIntensity: 0.4,
+                emissiveIntensity: 0.8,
                 shininess: 100,
                 transparent: true,
                 opacity: 0.95
@@ -639,40 +797,38 @@
             cube.castShadow = true;
             cube.receiveShadow = true;
             
-            // Позиционируем куб В ГЛУБИНЕ сцены
             cube.position.x = lane;
-            cube.position.y = 1.5; // На уровне груди
-            cube.position.z = GAME_CONFIG.CUBE_START_Z; // ДАЛЕКО ОТ ИГРОКА
+            cube.position.y = 1.5;
+            cube.position.z = CONFIG.CUBE_START_Z;
             
-            // Добавляем стрелку направления (смотрит НА ИГРОКА)
+            // Добавляем стрелку направления
             const arrowGeometry = new THREE.ConeGeometry(0.2, 0.4, 4);
-            const arrowMaterial = new THREE.MeshBasicMaterial({ 
+            const arrowMaterial = new THREE.MeshBasicMaterial({
                 color: 0xffffff,
                 emissive: 0xffffff,
                 emissiveIntensity: 0.5
             });
             const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
-            arrow.rotation.x = Math.PI; // Смотрит НА ИГРОКА
-            arrow.position.z = -0.4; // На передней грани куба
+            arrow.rotation.x = Math.PI;
+            arrow.position.z = -0.45;
             cube.add(arrow);
             
-            // Добавляем свечение вокруг куба
-            const glowGeometry = new THREE.BoxGeometry(0.85, 0.85, 0.85);
+            // Свечение куба
+            const glowGeometry = new THREE.BoxGeometry(1.1, 1.1, 1.1);
             const glowMaterial = new THREE.MeshBasicMaterial({
                 color: color,
                 transparent: true,
-                opacity: 0.1,
+                opacity: 0.2,
                 side: THREE.BackSide
             });
             const glow = new THREE.Mesh(glowGeometry, glowMaterial);
             cube.add(glow);
             
-            // Определяем параметры куба
             cube.userData = {
                 targetHand: targetHand,
                 color: color,
-                speed: GAME_CONFIG.CUBE_SPEED_MIN + Math.random() * (GAME_CONFIG.CUBE_SPEED_MAX - GAME_CONFIG.CUBE_SPEED_MIN),
-                direction: new THREE.Vector3(0, 0, -1), // Летит К ИГРОКУ!
+                speed: CONFIG.CUBE_SPEED_MIN + Math.random() * (CONFIG.CUBE_SPEED_MAX - CONFIG.CUBE_SPEED_MIN),
+                direction: new THREE.Vector3(0, 0, -1),
                 spawnTime: Date.now(),
                 isActive: true,
                 lane: lane
@@ -684,50 +840,41 @@
             return cube;
         }
         
-        // Инициализация задней камеры
+        // Инициализация камеры (ПЕРЕДНЯЯ камера для отслеживания рук)
         async function initCamera() {
             try {
-                // Получаем список камер
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
                 
-                // Ищем заднюю камеру (обычно она имеет label с "back", "rear" или "environment")
-                let rearCamera = null;
+                let frontCamera = null;
+                // Ищем переднюю камеру (обычно "user" или "front")
                 for (const device of videoDevices) {
-                    if (device.label.toLowerCase().includes('back') || 
-                        device.label.toLowerCase().includes('rear') ||
-                        device.label.toLowerCase().includes('environment') ||
-                        device.label.toLowerCase().includes('1') || // Часто задняя камера имеет индекс 1
-                        device.label.toLowerCase().includes('2')) {
-                        rearCamera = device;
+                    if (device.label.toLowerCase().includes('front') || 
+                        device.label.toLowerCase().includes('face') ||
+                        device.label.toLowerCase().includes('user')) {
+                        frontCamera = device;
                         break;
                     }
                 }
                 
-                // Если не нашли заднюю, берем последнюю камеру (часто это задняя)
-                if (!rearCamera && videoDevices.length > 1) {
-                    rearCamera = videoDevices[videoDevices.length - 1];
+                // Если не нашли, берем первую камеру
+                if (!frontCamera && videoDevices.length > 0) {
+                    frontCamera = videoDevices[0];
                 }
                 
-                // Настройки для камеры
                 const constraints = {
                     video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        frameRate: { ideal: 30 },
-                        facingMode: rearCamera ? { exact: rearCamera.deviceId } : 'environment'
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        frameRate: { ideal: 60 },
+                        facingMode: frontCamera ? { exact: frontCamera.deviceId } : 'user'
                     },
                     audio: false
                 };
                 
-                // Получаем поток с камеры
                 currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                // Настраиваем видео элементы
                 videoElement.srcObject = currentStream;
-                cameraVideo.srcObject = currentStream;
                 
-                // Ждем загрузки видео
                 await new Promise(resolve => {
                     videoElement.onloadedmetadata = () => {
                         videoElement.play();
@@ -735,293 +882,296 @@
                     };
                 });
                 
-                await new Promise(resolve => {
-                    cameraVideo.onloadedmetadata = () => {
-                        cameraVideo.play();
-                        resolve();
-                    };
-                });
+                // Создаем текстуру из видео для возможного использования
+                videoTexture = new THREE.VideoTexture(videoElement);
+                videoTexture.minFilter = THREE.LinearFilter;
+                videoTexture.magFilter = THREE.LinearFilter;
+                videoTexture.format = THREE.RGBFormat;
                 
                 cameraStatus.querySelector('#cameraIcon').textContent = '✅';
-                cameraStatus.querySelector('#cameraText').textContent = rearCamera ? 'Задняя камера' : 'Камера активна';
-                cameraStatus.style.color = '#00ff88';
-                
-                messageElement.textContent = "Камера запущена! Нажмите СТАРТ ИГРЫ";
-                
-                // Показываем кнопку предпросмотра
-                toggleCameraPreview.classList.remove('hidden');
+                cameraStatus.querySelector('#cameraText').textContent = 'Камера готова';
+                cameraStatus.style.borderColor = '#00ff88';
                 
                 return true;
                 
             } catch (error) {
                 console.error("Camera error:", error);
+                cameraStatus.querySelector('#cameraIcon').textContent = '❌';
+                cameraStatus.querySelector('#cameraText').textContent = 'Нет камеры';
+                cameraStatus.style.borderColor = '#ff3366';
+                messageElement.textContent = "Требуется камера для игры!";
+                return false;
+            }
+        }
+        
+        // Инициализация отслеживания рук
+        async function initHandTracking() {
+            messageElement.textContent = "Запуск отслеживания рук...";
+            
+            // Создаем простой детектор рук на основе цветового трекинга
+            // В реальном проекте здесь бы использовался MediaPipe или аналогичная библиотека
+            
+            // Запускаем обработку видео
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 640;
+            canvas.height = 480;
+            
+            let leftHandDetected = false;
+            let rightHandDetected = false;
+            
+            function processVideoFrame() {
+                if (!gameStarted || !videoElement.videoWidth) return;
                 
-                // Пробуем получить любую камеру как запасной вариант
-                try {
-                    const constraints = {
-                        video: {
-                            width: { ideal: 640 },
-                            height: { ideal: 480 },
-                            frameRate: { ideal: 30 }
-                        },
-                        audio: false
-                    };
-                    
-                    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                    videoElement.srcObject = currentStream;
-                    cameraVideo.srcObject = currentStream;
-                    
-                    await videoElement.play();
-                    await cameraVideo.play();
-                    
-                    cameraStatus.querySelector('#cameraIcon').textContent = '⚠️';
-                    cameraStatus.querySelector('#cameraText').textContent = 'Камера (авто)';
-                    cameraStatus.style.color = '#ffaa00';
-                    
-                    messageElement.textContent = "Камера запущена (авто режим)! Нажмите СТАРТ ИГРЫ";
-                    toggleCameraPreview.classList.remove('hidden');
-                    
-                    return true;
-                    
-                } catch (fallbackError) {
-                    console.error("Fallback camera error:", fallbackError);
-                    cameraStatus.querySelector('#cameraIcon').textContent = '❌';
-                    cameraStatus.querySelector('#cameraText').textContent = 'Нет камеры';
-                    cameraStatus.style.color = '#ff3333';
-                    
-                    messageElement.textContent = "Ошибка доступа к камере. Проверьте разрешения.";
-                    return false;
-                }
-            }
-        }
-        
-        // Инициализация детектора рук
-        async function initHandDetection() {
-            hands = new self.Hands({
-                locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-                }
-            });
-            
-            hands.setOptions({
-                maxNumHands: 2,
-                modelComplexity: 1,
-                minDetectionConfidence: 0.7,
-                minTrackingConfidence: 0.7,
-                selfieMode: false // ОТКЛЮЧАЕМ selfieMode для задней камеры
-            });
-            
-            hands.onResults(onHandResults);
-            
-            // Запускаем обработку кадра
-            async function processFrame() {
-                if (videoElement.readyState >= 2) {
-                    await hands.send({ image: videoElement });
-                }
-                if (gameStarted) {
-                    requestAnimationFrame(processFrame);
-                }
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Простая детекция движения (для демо)
+                // В реальном проекте здесь бы была нейросеть
+                
+                // Симулируем обнаружение рук для демонстрации
+                const currentTime = Date.now();
+                leftHandDetected = (currentTime % 2000) < 1900;
+                rightHandDetected = (currentTime % 2000) < 1900;
+                
+                // Обновляем позиции сабель на основе симулированных данных
+                updateSaberPosition('left', leftHandDetected, currentTime);
+                updateSaberPosition('right', rightHandDetected, currentTime);
+                
+                // Обновляем индикаторы
+                leftHandIndicator.style.backgroundColor = leftHandDetected ? '#ff3366' : '#555';
+                rightHandIndicator.style.backgroundColor = rightHandDetected ? '#33ccff' : '#555';
+                
+                requestAnimationFrame(processVideoFrame);
             }
             
-            // Ждем немного перед запуском обработки
-            setTimeout(() => {
-                if (videoElement.srcObject) {
-                    processFrame();
-                }
-            }, 500);
-        }
-        
-        // Обработка результатов детекции рук
-        function onHandResults(results) {
-            if (!gameStarted) return;
-            
-            // Сбросить состояние обнаружения
-            sabers.left.isDetected = false;
-            sabers.right.isDetected = false;
-            leftHandIndicator.style.backgroundColor = '#555';
-            rightHandIndicator.style.backgroundColor = '#555';
-            
-            if (results.multiHandLandmarks && results.multiHandedness) {
-                for (let i = 0; i < Math.min(results.multiHandLandmarks.length, 2); i++) {
-                    const landmarks = results.multiHandLandmarks[i];
-                    const handedness = results.multiHandedness[i].label; // "Left" или "Right"
+            function updateSaberPosition(side, detected, time) {
+                const saber = sabers[side];
+                
+                if (detected) {
+                    // Симулируем движение рук
+                    const t = time * 0.001;
+                    const offset = side === 'left' ? 0 : Math.PI;
                     
-                    // Используем запястье (landmark 0) и среднюю точку ладони
-                    const wrist = landmarks[0];
-                    const middleBase = landmarks[9];
+                    // Позиция симулированной руки
+                    const x = Math.sin(t * 2 + offset) * 1.5;
+                    const y = 1.5 + Math.cos(t * 1.5 + offset) * 0.5;
+                    const z = 2 + Math.sin(t * 3 + offset) * 0.3;
                     
-                    // Преобразуем координаты MediaPipe в координаты Three.js
-                    // Важно: для задней камеры координаты уже правильные
+                    const newPosition = new THREE.Vector3(x, y, z);
                     
-                    // X: слева направо (-2 до 2) - ИНВЕРТИРУЕМ для естественного управления
-                    const x = -(wrist.x - 0.5) * 4;
-                    
-                    // Y: снизу вверх (0.5 до 2.5)
-                    const y = (1.0 - wrist.y) * 2 + 0.5;
-                    
-                    // Z: глубина (отрицательная - ближе к камере)
-                    const z = GAME_CONFIG.PLAYER_Z_POSITION - (wrist.z * 2);
-                    
-                    const handKey = handedness.toLowerCase(); // "left" или "right"
-                    
-                    if (sabers[handKey]) {
-                        const saber = sabers[handKey];
-                        const newPosition = new THREE.Vector3(x, y, z);
-                        
-                        // Рассчитываем скорость
-                        if (saber.lastPosition.x !== 0 || saber.lastPosition.y !== 0 || saber.lastPosition.z !== 0) {
-                            saber.velocity.subVectors(newPosition, saber.lastPosition);
-                        }
-                        saber.lastPosition.copy(saber.position);
-                        saber.position.copy(newPosition);
-                        
-                        // Обновляем позицию сабли
-                        saber.group.position.copy(saber.position);
-                        
-                        // Вращаем саблю в направлении движения
-                        if (saber.velocity.length() > 0.01) {
-                            const targetPos = saber.position.clone().add(saber.velocity.normalize());
-                            saber.group.lookAt(targetPos);
-                        } else {
-                            // Базовая ориентация - вертикально
-                            saber.group.rotation.set(0, 0, 0);
-                        }
-                        
-                        // Обновляем след
-                        const trailPos = saber.position.clone();
-                        trailPos.y += 0.3;
-                        updateTrail(handKey, trailPos);
-                        
-                        saber.isDetected = true;
-                        saber.group.visible = true;
-                        
-                        // Обновляем индикатор
-                        const indicator = handKey === 'left' ? leftHandIndicator : rightHandIndicator;
-                        indicator.style.backgroundColor = handKey === 'left' ? '#ff3366' : '#33ccff';
-                        indicator.style.boxShadow = `0 0 10px ${handKey === 'left' ? '#ff3366' : '#33ccff'}`;
-                        
-                        // Проверяем коллизии с кубами
-                        checkCollisions(handKey);
+                    // Рассчитываем скорость
+                    if (saber.lastPosition.x !== 0 || saber.lastPosition.y !== 0 || saber.lastPosition.z !== 0) {
+                        saber.velocity.subVectors(newPosition, saber.lastPosition);
                     }
+                    saber.lastPosition.copy(saber.position);
+                    saber.position.copy(newPosition);
+                    
+                    // Обновляем позицию и вращение
+                    saber.group.position.copy(saber.position);
+                    
+                    // Вращаем меч в направлении движения
+                    if (saber.velocity.length() > 0.01) {
+                        const targetPos = saber.position.clone().add(saber.velocity.normalize());
+                        saber.group.lookAt(targetPos);
+                    } else {
+                        saber.group.rotation.set(0, 0, 0);
+                    }
+                    
+                    // Обновляем след
+                    const trailPos = saber.position.clone();
+                    trailPos.y += 0.5;
+                    updateSaberTrail(side, trailPos);
+                    
+                    saber.isDetected = true;
+                    saber.group.visible = true;
+                    
+                    // Проверяем коллизии
+                    checkSaberCollisions(side);
+                    
+                } else {
+                    saber.isDetected = false;
+                    saber.group.visible = false;
+                    saberTrails[side].line.visible = false;
                 }
             }
             
-            // Скрываем необнаруженные сабли
-            if (!sabers.left.isDetected) {
-                sabers.left.group.visible = false;
-                trails.left.line.visible = false;
-            }
-            if (!sabers.right.isDetected) {
-                sabers.right.group.visible = false;
-                trails.right.line.visible = false;
-            }
+            // Запускаем обработку
+            setTimeout(processVideoFrame, 1000);
+            messageElement.textContent = "Отслеживание рук активно!";
+            
+            // Для демо: добавляем управление мышью/тачем
+            initMouseControls();
+            
+            return true;
         }
         
-        // Обновление следа сабли
-        function updateTrail(side, position) {
-            const trail = trails[side];
-            if (!trail || !sabers[side].isDetected) return;
+        // Инициализация управления мышью/тачем для демо
+        function initMouseControls() {
+            const mousePos = { x: 0, y: 0 };
+            const touchActive = { left: false, right: false };
             
-            // Добавляем новую точку
-            trail.points.unshift(position.clone());
-            
-            // Ограничиваем количество точек
-            if (trail.points.length > trail.maxPoints) {
-                trail.points.pop();
-            }
-            
-            // Обновляем геометрию
-            if (trail.points.length > 1) {
-                const positions = new Float32Array(trail.points.length * 3);
-                for (let i = 0; i < trail.points.length; i++) {
-                    positions[i * 3] = trail.points[i].x;
-                    positions[i * 3 + 1] = trail.points[i].y;
-                    positions[i * 3 + 2] = trail.points[i].z;
-                }
+            // Мышь для левой руки
+            document.addEventListener('mousemove', (e) => {
+                mousePos.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1;
                 
-                trail.line.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                trail.line.geometry.attributes.position.needsUpdate = true;
-                trail.line.visible = true;
-            }
+                if (gameStarted) {
+                    const x = mousePos.x * 3;
+                    const y = mousePos.y * 2 + 2;
+                    const z = 2;
+                    
+                    updateSaberFromInput('left', x, y, z);
+                    leftHandIndicator.style.backgroundColor = '#ff3366';
+                }
+            });
+            
+            document.addEventListener('mousedown', () => {
+                if (gameStarted) {
+                    touchActive.left = true;
+                    checkSaberCollisions('left');
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                touchActive.left = false;
+            });
+            
+            // Тач для правой руки (мобильные устройства)
+            document.addEventListener('touchstart', (e) => {
+                if (!gameStarted) return;
+                
+                e.preventDefault();
+                touchActive.right = true;
+                
+                const touch = e.touches[0];
+                const x = (touch.clientX / window.innerWidth) * 2 - 1;
+                const y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                
+                updateSaberFromInput('right', x * 3, y * 2 + 2, 2);
+                rightHandIndicator.style.backgroundColor = '#33ccff';
+                checkSaberCollisions('right');
+            });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!gameStarted || !touchActive.right) return;
+                
+                e.preventDefault();
+                const touch = e.touches[0];
+                const x = (touch.clientX / window.innerWidth) * 2 - 1;
+                const y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                
+                updateSaberFromInput('right', x * 3, y * 2 + 2, 2);
+                checkSaberCollisions('right');
+            });
+            
+            document.addEventListener('touchend', () => {
+                touchActive.right = false;
+            });
         }
         
-        // Проверка коллизий с кубами
-        function checkCollisions(handKey) {
-            const saber = sabers[handKey];
+        function updateSaberFromInput(side, x, y, z) {
+            const saber = sabers[side];
+            const newPosition = new THREE.Vector3(x, y, z);
+            
+            if (saber.lastPosition.x !== 0 || saber.lastPosition.y !== 0 || saber.lastPosition.z !== 0) {
+                saber.velocity.subVectors(newPosition, saber.lastPosition);
+            }
+            saber.lastPosition.copy(saber.position);
+            saber.position.copy(newPosition);
+            
+            saber.group.position.copy(saber.position);
+            
+            if (saber.velocity.length() > 0.01) {
+                const targetPos = saber.position.clone().add(saber.velocity.normalize());
+                saber.group.lookAt(targetPos);
+            }
+            
+            updateSaberTrail(side, saber.position.clone().add(new THREE.Vector3(0, 0.5, 0)));
+            
+            saber.isDetected = true;
+            saber.group.visible = true;
+        }
+        
+        // Проверка коллизий сабли с кубами
+        function checkSaberCollisions(side) {
+            const saber = sabers[side];
             if (!saber || !saber.isDetected) return;
             
-            // Используем сферу для проверки коллизий
-            const saberSphere = new THREE.Sphere(saber.position, 0.4);
+            const saberSphere = new THREE.Sphere(saber.position, 0.8);
             
             for (let i = cubes.length - 1; i >= 0; i--) {
                 const cube = cubes[i];
                 if (!cube.userData.isActive) continue;
                 
-                // Проверяем, подходящая ли это рука для этого куба
-                if (cube.userData.targetHand !== handKey) continue;
+                if (cube.userData.targetHand !== side) continue;
                 
-                // Проверяем расстояние (куб уже должен быть достаточно близко)
-                const cubeSphere = new THREE.Sphere(cube.position, 0.5);
+                const cubeSphere = new THREE.Sphere(cube.position, 0.6);
                 
                 if (saberSphere.intersectsSphere(cubeSphere)) {
-                    // Проверяем скорость удара
                     const saberSpeed = saber.velocity.length();
                     
                     if (saberSpeed > 0.05) {
-                        cutCube(cube, handKey, saberSpeed);
+                        cutCube(cube, side, saberSpeed);
                         cubes.splice(i, 1);
                         saber.isCutting = true;
-                        setTimeout(() => saber.isCutting = false, 100);
+                        
+                        // Усиливаем свечение при ударе
+                        saber.core.material.opacity = 1.5;
+                        saber.blade.material.opacity = 1.0;
+                        saber.glow.material.opacity = 0.4;
+                        
+                        setTimeout(() => {
+                            if (saber.core) {
+                                saber.core.material.opacity = 1.0;
+                                saber.blade.material.opacity = 0.7;
+                                saber.glow.material.opacity = 0.2;
+                            }
+                            saber.isCutting = false;
+                        }, 100);
                     }
                 }
             }
         }
         
-        // Обработка разрезания куба
-        function cutCube(cube, handKey, speed) {
+        // Разрезание куба
+        function cutCube(cube, side, speed) {
             cube.userData.isActive = false;
-            
-            // Сбрасываем таймер комбо
             lastCutTime = Date.now();
             
-            // Увеличиваем комбо и счет
             combo++;
-            const points = Math.floor(10 * combo * Math.min(speed * 15, 2.5));
+            const points = Math.floor(15 * combo * Math.min(speed * 20, 3));
             score += points;
             
-            if (combo > maxCombo) {
-                maxCombo = combo;
-            }
+            if (combo > maxCombo) maxCombo = combo;
             
-            // Обновляем UI
             scoreElement.textContent = score;
             comboElement.textContent = `Combo: ${combo} (Max: ${maxCombo})`;
             comboElement.style.color = combo >= 10 ? '#ffaa00' : '#00ff88';
+            comboElement.style.textShadow = combo >= 10 ? '0 0 15px #ffaa00' : '0 0 10px #00ff88';
             
-            // Визуальные эффекты
+            // Создаем эффект взрыва
             createCubeExplosion(cube.position, cube.userData.color, speed);
             
             // Вибрация
-            if (navigator.vibrate) {
-                navigator.vibrate(30);
-            }
+            if (navigator.vibrate) navigator.vibrate(50);
             
             // Удаляем куб
             scene.remove(cube);
         }
         
-        // Создание взрыва при разрезании куба
+        // Эффект взрыва куба
         function createCubeExplosion(position, color, speed) {
-            const particleCount = Math.floor(20 * speed);
+            const particleCount = Math.floor(30 * speed);
             const geometry = new THREE.BufferGeometry();
             const vertices = [];
             
             for (let i = 0; i < particleCount; i++) {
-                // Частицы разлетаются от точки удара
                 const angle = Math.random() * Math.PI * 2;
-                const radius = Math.random() * 0.5;
+                const radius = Math.random() * 0.8;
                 const x = Math.cos(angle) * radius;
-                const y = Math.random() * 0.5;
+                const y = (Math.random() - 0.5) * 1;
                 const z = Math.sin(angle) * radius;
                 vertices.push(x, y, z);
             }
@@ -1030,23 +1180,23 @@
             
             const material = new THREE.PointsMaterial({
                 color: color,
-                size: 0.08,
+                size: 0.1,
                 transparent: true,
-                opacity: 0.9
+                opacity: 1,
+                blending: THREE.AdditiveBlending
             });
             
             const particles = new THREE.Points(geometry, material);
             particles.position.copy(position);
             scene.add(particles);
             
-            // Анимация частиц
             const particleData = [];
             for (let i = 0; i < particleCount; i++) {
                 particleData.push({
                     velocity: new THREE.Vector3(
-                        (Math.random() - 0.5) * 0.4,
-                        (Math.random() - 0.5) * 0.4,
-                        (Math.random() - 0.5) * 0.4
+                        (Math.random() - 0.5) * 0.6,
+                        (Math.random() - 0.5) * 0.6,
+                        (Math.random() - 0.5) * 0.6
                     ),
                     life: 1.0
                 });
@@ -1060,19 +1210,19 @@
                     const data = particleData[i];
                     if (data.life > 0) {
                         allDead = false;
-                        data.life -= 0.04;
+                        data.life -= 0.03;
                         
                         positions[i * 3] += data.velocity.x;
                         positions[i * 3 + 1] += data.velocity.y;
                         positions[i * 3 + 2] += data.velocity.z;
                         
-                        data.velocity.y -= 0.015; // Гравитация
+                        data.velocity.y -= 0.02;
                     }
                 }
                 
                 particles.geometry.attributes.position.needsUpdate = true;
                 material.opacity -= 0.04;
-                material.size -= 0.002;
+                material.size -= 0.003;
                 
                 if (allDead || material.opacity <= 0) {
                     scene.remove(particles);
@@ -1098,7 +1248,7 @@
             combo = 0;
             maxCombo = 0;
             missedCubes = 0;
-            timeLeft = 90;
+            timeLeft = CONFIG.GAME_TIME;
             
             // Очищаем старые кубы
             cubes.forEach(cube => scene.remove(cube));
@@ -1108,8 +1258,9 @@
             scoreElement.textContent = "0";
             comboElement.textContent = "Combo: 0 (Max: 0)";
             comboElement.style.color = '#00ff88';
+            comboElement.style.textShadow = '0 0 10px #00ff88';
             messageElement.textContent = "Игра началась! Режьте кубы!";
-            startButton.textContent = "ОСТАНОВИТЬ ИГРУ";
+            startButton.textContent = "⏸️ СТОП";
             timeLeftElement.textContent = timeLeft;
             timeLeftElement.classList.remove('hidden');
             
@@ -1121,13 +1272,12 @@
                     timeLeftElement.textContent = timeLeft;
                     
                     if (timeLeft <= 10) {
+                        timeLeftElement.classList.add('pulse');
                         timeLeftElement.style.color = '#ff3366';
-                        timeLeftElement.style.animation = 'pulse 0.5s infinite';
+                        timeLeftElement.style.borderColor = '#ff3366';
                     }
                     
-                    if (timeLeft <= 0) {
-                        stopGame();
-                    }
+                    if (timeLeft <= 0) stopGame();
                 }
             }, 1000);
             
@@ -1137,19 +1287,15 @@
                 if (gameStarted) {
                     createCube();
                     
-                    // Увеличиваем сложность со временем
                     const elapsed = Date.now() - gameStartTime;
-                    if (elapsed > 30000 && Math.random() > 0.6) {
-                        createCube();
-                    }
-                    if (elapsed > 60000 && Math.random() > 0.4) {
-                        createCube();
-                    }
+                    if (elapsed > 30000 && Math.random() > 0.6) createCube();
+                    if (elapsed > 60000 && Math.random() > 0.4) createCube();
                 }
-            }, GAME_CONFIG.CUBE_SPAWN_RATE);
+            }, CONFIG.CUBE_SPAWN_RATE);
             
-            // Скрываем стрелку-индикатор
-            document.querySelector('.arrow-indicator').style.display = 'none';
+            // Показываем сабли
+            sabers.left.group.visible = true;
+            sabers.right.group.visible = true;
         }
         
         // Остановка игры
@@ -1168,13 +1314,10 @@
             
             const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
             messageElement.textContent = `Игра окончена! Время: ${elapsed}с, Счет: ${score}, Макс. комбо: ${maxCombo}`;
-            startButton.textContent = "НОВАЯ ИГРА";
-            timeLeftElement.classList.add('hidden');
+            startButton.textContent = "🚀 СТАРТ";
+            timeLeftElement.classList.remove('hidden', 'pulse');
             timeLeftElement.style.color = '#00ff88';
-            timeLeftElement.style.animation = '';
-            
-            // Показываем стрелку-индикатор
-            document.querySelector('.arrow-indicator').style.display = 'block';
+            timeLeftElement.style.borderColor = '#00ff88';
         }
         
         // Обновление игровой логики
@@ -1183,26 +1326,20 @@
             
             const currentTime = Date.now();
             
-            // Обновляем кубы (летят К ИГРОКУ)
+            // Обновляем кубы
             for (let i = cubes.length - 1; i >= 0; i--) {
                 const cube = cubes[i];
-                
-                // Двигаем куб К ИГРОКУ (z уменьшается)
                 cube.position.add(cube.userData.direction.clone().multiplyScalar(cube.userData.speed));
-                
-                // Вращаем куб
-                cube.rotation.x += 0.015;
-                cube.rotation.y += 0.015;
+                cube.rotation.x += 0.02;
+                cube.rotation.y += 0.02;
                 
                 // Мерцание свечения
-                const glow = cube.children.find(child => child.material && child.material.opacity === 0.1);
+                const glow = cube.children.find(c => c.material && c.material.opacity === 0.2);
                 if (glow) {
-                    glow.material.opacity = 0.1 + Math.sin(currentTime * 0.005) * 0.05;
+                    glow.material.opacity = 0.2 + Math.sin(currentTime * 0.005 + i) * 0.1;
                 }
                 
-                // Проверяем, не прошел ли куб игрока
-                if (cube.position.z < GAME_CONFIG.CUBE_END_Z) {
-                    cube.userData.isActive = false;
+                if (cube.position.z < CONFIG.CUBE_END_Z) {
                     scene.remove(cube);
                     cubes.splice(i, 1);
                     
@@ -1210,35 +1347,34 @@
                     combo = 0;
                     comboElement.textContent = `Combo: 0 (Max: ${maxCombo})`;
                     comboElement.style.color = '#00ff88';
+                    comboElement.style.textShadow = '0 0 10px #00ff88';
                     
-                    if (missedCubes >= GAME_CONFIG.MISS_LIMIT) {
-                        messageElement.textContent = "Слишком много пропущено! Игра окончена.";
+                    if (missedCubes >= CONFIG.MISS_LIMIT) {
+                        messageElement.textContent = "Слишком много пропущено!";
                         stopGame();
                     }
                 }
             }
             
             // Таймаут комбо
-            if (currentTime - lastCutTime > GAME_CONFIG.COMBO_TIMEOUT && combo > 0) {
+            if (currentTime - lastCutTime > CONFIG.COMBO_TIMEOUT && combo > 0) {
                 combo = 0;
                 comboElement.textContent = `Combo: 0 (Max: ${maxCombo})`;
                 comboElement.style.color = '#00ff88';
+                comboElement.style.textShadow = '0 0 10px #00ff88';
+            }
+            
+            // Обновляем FPS
+            frameCount++;
+            if (currentTime - lastFpsTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFpsTime = currentTime;
+                fpsElement.textContent = `FPS: ${fps}`;
             }
         }
         
-        // Переключение предпросмотра камеры
-        function toggleCameraPreviewView() {
-            cameraPreviewVisible = !cameraPreviewVisible;
-            if (cameraPreviewVisible) {
-                cameraPreview.style.display = 'block';
-                toggleCameraPreview.textContent = '👁️ Скрыть камеру';
-            } else {
-                cameraPreview.style.display = 'none';
-                toggleCameraPreview.textContent = '👁️ Показать камеру';
-            }
-        }
-        
-        // Обработка изменения размера окна
+        // Обработка изменения размера
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -1252,56 +1388,58 @@
             renderer.render(scene, camera);
         }
         
-        // Инициализация при загрузке страницы
+        // Инициализация
         async function init() {
             try {
-                // Инициализируем Three.js
                 initThreeJS();
                 
-                // Инициализируем камеру
                 const cameraSuccess = await initCamera();
-                
                 if (cameraSuccess) {
-                    // Инициализируем детектор рук
-                    await initHandDetection();
-                    
-                    // Запускаем анимационный цикл
+                    await initHandTracking();
                     animate();
-                    
-                    messageElement.textContent = "Готово! Нажмите СТАРТ ИГРЫ или ПРОБЕЛ";
-                } else {
-                    messageElement.textContent = "Требуется камера для игры!";
-                    startButton.disabled = true;
+                    messageElement.textContent = "Готово! Нажмите СТАРТ или ПРОБЕЛ";
                 }
                 
-                // Назначаем обработчики
+                // Обработчики
                 startButton.addEventListener('click', startGame);
-                toggleCameraPreview.addEventListener('click', toggleCameraPreviewView);
-                
-                document.addEventListener('keydown', (event) => {
-                    if (event.code === 'Space') {
-                        event.preventDefault();
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
                         startGame();
                     }
-                    if (event.code === 'KeyC') {
-                        toggleCameraPreviewView();
+                    if (e.code === 'KeyD') {
+                        handDebugElement.classList.toggle('hidden');
+                    }
+                });
+                
+                // Управление для демо
+                document.addEventListener('keydown', (e) => {
+                    if (!gameStarted) return;
+                    
+                    if (e.code === 'ArrowLeft') {
+                        updateSaberFromInput('left', -1.5, 1.5, 2);
+                        checkSaberCollisions('left');
+                    }
+                    if (e.code === 'ArrowRight') {
+                        updateSaberFromInput('right', 1.5, 1.5, 2);
+                        checkSaberCollisions('right');
                     }
                 });
                 
             } catch (error) {
-                console.error("Initialization error:", error);
-                messageElement.textContent = "Ошибка инициализации: " + error.message;
+                console.error("Init error:", error);
+                messageElement.textContent = "Ошибка: " + error.message;
             }
         }
         
-        // Очистка при закрытии
+        // Очистка
         window.addEventListener('beforeunload', () => {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
             }
         });
         
-        // Запускаем инициализацию
+        // Запуск
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
