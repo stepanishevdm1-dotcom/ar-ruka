@@ -5,13 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR Видео в Реальном Мире</title>
     
-    <!-- Three.js и библиотеки -->
+    <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
-    <!-- AR.js для маркеров и отслеживания -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     
     <!-- MediaPipe для рук -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
@@ -106,13 +101,9 @@
             background: #000;
         }
         
-        #arView {
+        #arCanvas {
             width: 100%;
             height: 100%;
-            display: none;
-        }
-        
-        #arView.active {
             display: block;
         }
         
@@ -163,32 +154,6 @@
             transform: scale(0.95);
         }
         
-        /* Индикатор жестов */
-        .gesture-indicator {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            z-index: 1001;
-        }
-        
-        .gesture-item {
-            display: flex;
-            align-items: center;
-            margin: 8px 0;
-            font-size: 14px;
-        }
-        
-        .gesture-icon {
-            font-size: 20px;
-            margin-right: 10px;
-            width: 30px;
-        }
-        
         /* Статус бар */
         .status-bar {
             position: absolute;
@@ -225,18 +190,25 @@
             background: #f44336;
         }
         
-        /* Видео плашка */
-        .video-info {
+        .status-dot.yellow {
+            background: #ff9800;
+        }
+        
+        /* Инструкции жестов */
+        .gesture-hint {
             position: absolute;
-            top: 60px;
-            left: 20px;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.7);
-            padding: 10px 15px;
-            border-radius: 10px;
+            padding: 15px 20px;
+            border-radius: 15px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             z-index: 1001;
-            max-width: 200px;
+            text-align: center;
+            max-width: 90%;
+            font-size: 14px;
         }
         
         /* Загрузка */
@@ -268,6 +240,20 @@
             to { transform: rotate(360deg); }
         }
         
+        /* Информация о видео */
+        .video-info {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 1001;
+            max-width: 200px;
+        }
+        
         /* Адаптивность */
         @media (max-width: 480px) {
             .control-panel {
@@ -282,8 +268,9 @@
                 font-size: 20px;
             }
             
-            .gesture-indicator {
-                display: none; /* Скрываем на маленьких экранах */
+            .gesture-hint {
+                bottom: 90px;
+                font-size: 12px;
             }
         }
     </style>
@@ -313,34 +300,27 @@
                     <p>🤏 <strong>Щепотка</strong> - захват и перемещение</p>
                     <p>✋ <strong>Ладонь</strong> - пауза</p>
                     <p>✊ <strong>Кулак</strong> - воспроизведение</p>
-                    <p>👆👇 <strong>Пальцы</strong> - громкость +/-</p>
                 </div>
             </div>
             
             <div style="margin-top: 20px; color: #888; font-size: 14px;">
-                <p>📱 Используйте заднюю камеру для AR</p>
-                <p>🏠 Видео останется в комнате после движения</p>
+                <p>📱 Используйте заднюю камеру</p>
+                <p>🏠 Видео останется в комнате</p>
+                <p>⚠️ Требуется HTTPS</p>
             </div>
         </div>
     </div>
 
     <!-- AR экран -->
     <div id="arScreen" class="screen">
-        <!-- A-Frame AR сцена -->
-        <div id="arView"></div>
-        
-        <!-- Canvas для отслеживания рук -->
+        <canvas id="arCanvas"></canvas>
         <canvas id="handCanvas"></canvas>
         
         <!-- Статус бар -->
         <div class="status-bar">
             <div class="status-item">
-                <div class="status-dot green" id="arStatus"></div>
-                <span>AR активен</span>
-            </div>
-            <div class="status-item">
-                <div class="status-dot green" id="handStatus"></div>
-                <span>Жесты: вкл</span>
+                <div class="status-dot yellow" id="arStatus">●</div>
+                <span id="arStatusText">Загрузка AR...</span>
             </div>
             <button id="backBtn" class="btn-secondary" style="padding: 8px 16px; font-size: 14px;">
                 ← Назад
@@ -350,33 +330,18 @@
         <!-- Информация о видео -->
         <div class="video-info" id="videoInfo">
             <div style="font-size: 12px; color: #4cc9f0;">📹 Текущее видео:</div>
-            <div id="currentVideoName" style="font-size: 14px; margin-top: 5px;">Загрузка...</div>
+            <div id="currentVideoName" style="font-size: 14px; margin-top: 5px;">Нет видео</div>
         </div>
         
-        <!-- Индикатор жестов (только на больших экранах) -->
-        <div class="gesture-indicator">
-            <div class="gesture-item">
-                <div class="gesture-icon">🤏</div>
-                <div>Захват/перемещение</div>
-            </div>
-            <div class="gesture-item">
-                <div class="gesture-icon">✋</div>
-                <div>Пауза</div>
-            </div>
-            <div class="gesture-item">
-                <div class="gesture-icon">✊</div>
-                <div>Воспроизведение</div>
-            </div>
-            <div class="gesture-item">
-                <div class="gesture-icon">👆</div>
-                <div>Громкость +</div>
-            </div>
+        <!-- Подсказка жестов -->
+        <div class="gesture-hint" id="gestureHint">
+            Наведите камеру на поверхность и коснитесь экрана
         </div>
         
         <!-- Панель управления -->
-        <div class="control-panel">
+        <div class="control-panel" id="controlPanel" style="display: none;">
             <button class="control-btn" id="playPauseBtn" title="Воспроизвести/Пауза">
-                ⏸️
+                ▶️
             </button>
             <button class="control-btn" id="volumeBtn" title="Вкл/Выкл звук">
                 🔊
@@ -390,11 +355,13 @@
         </div>
         
         <!-- Оверлей загрузки -->
-        <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
             <div class="spinner"></div>
-            <div style="margin-top: 20px; font-size: 18px;">Инициализация AR...</div>
-            <div style="margin-top: 10px; font-size: 14px; color: #a5b4cb;" id="loadingText">
-                Включение задней камеры
+            <div style="margin-top: 20px; font-size: 18px;" id="loadingText">
+                Запуск AR камеры...
+            </div>
+            <div style="margin-top: 10px; font-size: 14px; color: #a5b4cb;" id="loadingSubtext">
+                Пожалуйста, подождите
             </div>
         </div>
     </div>
@@ -414,7 +381,7 @@
                     или
                 </div>
                 
-                <input type="text" id="youtubeUrlInput" placeholder="Вставьте ссылку YouTube..." 
+                <input type="text" id="youtubeUrlInput" placeholder="https://youtube.com/watch?v=..." 
                        style="width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 10px; border: 2px solid #4cc9f0; background: rgba(255,255,255,0.1); color: white;">
                 <button id="loadYoutubeBtn" class="btn btn-primary">
                     📺 Загрузить YouTube видео
@@ -434,27 +401,42 @@
 
     <script>
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
-        let currentVideoUrl = null;
-        let currentVideoName = "YouTube видео";
+        let currentVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+        let currentVideoName = "Пример видео";
         let isARActive = false;
         let handDetector = null;
         let handCanvas, handCtx;
         let isGrabbing = false;
         let videoElement = null;
-        let videoPlaced = false;
-        let videoEntity = null;
-        let arScene = null;
         
-        // Позиция видео в мировых координатах
-        let videoWorldPosition = { x: 0, y: 0, z: -2 };
-        let videoWorldRotation = { x: 0, y: 0, z: 0 };
-        let videoScale = 1;
+        // Three.js переменные
+        let scene, camera, renderer, arVideoMesh;
+        let videoTexture = null;
+        let arSession = null;
+        
+        // Позиция видео
+        let videoPosition = { x: 0, y: 0, z: -2 };
+        let videoScaleValue = 1;
+        let videoPlaced = false;
         
         // ========== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ==========
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Инициализация AR приложения...');
+            console.log('🚀 Инициализация приложения...');
             setupEventListeners();
+            checkWebXRSupport();
         });
+        
+        // ========== ПРОВЕРКА ПОДДЕРЖКИ WEBXR ==========
+        function checkWebXRSupport() {
+            if (!navigator.xr) {
+                showMessage('Ваш браузер не поддерживает WebXR', 'error');
+                document.getElementById('startAR').disabled = true;
+                document.getElementById('arStatus').className = 'status-dot red';
+                document.getElementById('arStatusText').textContent = 'WebXR не поддерживается';
+                return false;
+            }
+            return true;
+        }
         
         // ========== НАСТРОЙКА ОБРАБОТЧИКОВ СОБЫТИЙ ==========
         function setupEventListeners() {
@@ -480,12 +462,11 @@
             document.getElementById('deleteBtn').addEventListener('click', deleteVideo);
             document.getElementById('resetBtn').addEventListener('click', resetVideoPosition);
             
-            // Предотвращение стандартного поведения касаний
-            document.addEventListener('touchstart', function(e) {
-                if (e.touches.length > 1) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
+            // Обработка касаний для размещения видео
+            document.getElementById('arCanvas').addEventListener('click', placeVideoOnTap);
+            
+            // Обработка изменения размера окна
+            window.addEventListener('resize', onWindowResize);
             
             // Скрытие модального окна при клике на фон
             document.getElementById('videoModal').addEventListener('click', function(e) {
@@ -495,280 +476,197 @@
         
         // ========== ЗАПУСК AR ОПЫТА ==========
         async function startARExperience() {
-            if (!currentVideoUrl) {
-                showVideoModal();
-                return;
-            }
+            console.log('🚀 Запуск AR опыта...');
             
-            console.log('🚀 Запуск AR опыта с задней камерой...');
+            // Показываем загрузку
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').textContent = 'Запуск AR камеры...';
+            document.getElementById('loadingSubtext').textContent = 'Пожалуйста, подождите';
             
             // Переключаемся на AR экран
             switchScreen('arScreen');
             
-            // Показываем загрузку
-            document.getElementById('loadingOverlay').style.display = 'flex';
-            document.getElementById('loadingText').textContent = 'Включение задней камеры...';
-            
-            // Инициализируем AR сцену
-            await initARScene();
-            
-            // Инициализируем отслеживание рук
-            await initHandTracking();
-            
-            // Скрываем загрузку
-            setTimeout(() => {
-                document.getElementById('loadingOverlay').style.display = 'none';
-            }, 1000);
-            
-            showMessage('AR камера активирована! Ищите плоскую поверхность.', 'success');
-        }
-        
-        // ========== ИНИЦИАЛИЗАЦИЯ AR СЦЕНЫ С ЗАДНЕЙ КАМЕРОЙ ==========
-        async function initARScene() {
-            console.log('📱 Инициализация AR с задней камерой...');
-            
-            const arView = document.getElementById('arView');
-            arView.innerHTML = '';
-            
-            // Создаем A-Frame сцену с задней камерой
-            arView.innerHTML = `
-                <a-scene 
-                    embedded 
-                    arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; debugUIEnabled: false;"
-                    vr-mode-ui="enabled: false"
-                    renderer="logarithmicDepthBuffer: true; precision: medium;"
-                    gesture-detector
-                >
-                    <!-- Используем заднюю камеру на мобильных устройствах -->
-                    <a-entity camera="userHeight: 1.6;" position="0 1.6 0" look-controls>
-                        <!-- Маркер для размещения видео -->
-                        <a-entity cursor="rayOrigin: mouse" 
-                                 raycaster="objects: .clickable; showLine: false"
-                                 position="0 0 -1">
-                        </a-entity>
-                    </a-entity>
-                    
-                    <!-- Маркер для поиска поверхности -->
-                    <a-marker-camera preset="hiro"></a-marker-camera>
-                    
-                    <!-- Сетка для отображения поверхностей -->
-                    <a-entity geometry="primitive: plane; width: 100; height: 100" 
-                             rotation="-90 0 0"
-                             material="color: #333; opacity: 0.5; transparent: true"
-                             visible="false"
-                             class="floor">
-                    </a-entity>
-                    
-                    <!-- Сюда будет добавлено видео -->
-                    <a-entity id="videoContainer"></a-entity>
-                    
-                </a-scene>
-            `;
-            
-            // Ждем загрузки сцены
-            return new Promise((resolve) => {
-                arView.addEventListener('loaded', function() {
-                    arScene = arView.querySelector('a-scene');
-                    console.log('✅ AR сцена загружена');
-                    
-                    // Настройка камеры для использования задней камеры
-                    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-                        navigator.mediaDevices.enumerateDevices().then(devices => {
-                            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                            if (videoDevices.length > 1) {
-                                console.log('📷 Найдены камеры:', videoDevices.length);
-                                // На мобильных устройствах задняя камера обычно имеет метку "back" или "environment"
-                                const backCamera = videoDevices.find(device => 
-                                    device.label.toLowerCase().includes('back') || 
-                                    device.label.toLowerCase().includes('rear') ||
-                                    device.label.toLowerCase().includes('environment')
-                                );
-                                
-                                if (backCamera) {
-                                    console.log('📷 Используем заднюю камеру:', backCamera.label);
-                                }
-                            }
-                        });
-                    }
-                    
-                    // Загружаем видео в сцену
-                    loadVideoIntoScene();
-                    resolve();
-                });
-            });
-        }
-        
-        // ========== ЗАГРУЗКА ВИДЕО В AR СЦЕНУ ==========
-        function loadVideoIntoScene() {
-            console.log('🎥 Загрузка видео в AR сцену...');
-            
-            const videoContainer = document.querySelector('#videoContainer');
-            if (!videoContainer) return;
-            
-            // Очищаем предыдущее видео
-            videoContainer.innerHTML = '';
-            
-            // Создаем видео элемент
-            videoElement = document.createElement('video');
-            videoElement.src = currentVideoUrl;
-            videoElement.crossOrigin = 'anonymous';
-            videoElement.loop = true;
-            videoElement.muted = true;
-            videoElement.playsInline = true;
-            videoElement.setAttribute('webkit-playsinline', '');
-            
-            // Создаем видео текстуру
-            const videoTexture = new THREE.VideoTexture(videoElement);
-            videoTexture.minFilter = THREE.LinearFilter;
-            videoTexture.magFilter = THREE.LinearFilter;
-            
-            // Ждем загрузки метаданных видео
-            videoElement.addEventListener('loadedmetadata', function() {
-                console.log('📐 Размеры видео:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-                
-                // Вычисляем реальные пропорции видео
-                const aspectRatio = videoElement.videoWidth / videoElement.videoHeight;
-                const width = 1.6; // Фиксированная ширина в метрах
-                const height = width / aspectRatio;
-                
-                console.log('📏 Реальные размеры в AR:', width.toFixed(2), 'x', height.toFixed(2), 'м');
-                
-                // Создаем плоскость с реальными пропорциями видео
-                const videoPlane = document.createElement('a-entity');
-                videoPlane.setAttribute('geometry', {
-                    primitive: 'plane',
-                    width: width,
-                    height: height
-                });
-                
-                videoPlane.setAttribute('material', {
-                    src: '#videoTexture',
-                    transparent: true,
-                    opacity: 1
-                });
-                
-                videoPlane.setAttribute('position', {
-                    x: videoWorldPosition.x,
-                    y: videoWorldPosition.y,
-                    z: videoWorldPosition.z
-                });
-                
-                videoPlane.setAttribute('rotation', {
-                    x: videoWorldRotation.x,
-                    y: videoWorldRotation.y,
-                    z: videoWorldRotation.z
-                });
-                
-                videoPlane.setAttribute('scale', videoScale + ' ' + videoScale + ' ' + videoScale);
-                videoPlane.setAttribute('class', 'clickable video-plane');
-                videoPlane.setAttribute('id', 'arVideo');
-                
-                // Добавляем видео в сцену
-                videoContainer.appendChild(videoPlane);
-                videoEntity = videoPlane;
-                
-                // Создаем текстуру для A-Frame
-                const sceneEl = document.querySelector('a-scene');
-                const texture = new THREE.VideoTexture(videoElement);
-                sceneEl.systems.material.registerTexture('videoTexture', texture);
-                
-                // Начинаем воспроизведение
-                videoElement.play().catch(e => {
-                    console.log('Автовоспроизведение заблокировано, требуется взаимодействие');
-                    showMessage('Нажмите кнопку Play для начала воспроизведения', 'info');
-                });
-                
-                // Обновляем информацию о видео
-                document.getElementById('currentVideoName').textContent = currentVideoName;
-                
-                console.log('✅ Видео загружено в AR сцену');
-                videoPlaced = true;
-                
-                // Добавляем обработчик для размещения видео по касанию
-                setupVideoPlacement();
-            });
-            
-            videoElement.load();
-        }
-        
-        // ========== НАСТРОЙКА РАЗМЕЩЕНИЯ ВИДЕО ПО КАСАНИЮ ==========
-        function setupVideoPlacement() {
-            const sceneEl = document.querySelector('a-scene');
-            if (!sceneEl) return;
-            
-            sceneEl.addEventListener('click', function(evt) {
-                if (!videoEntity || evt.detail.intersection.point) {
-                    // Размещаем видео в точке касания
-                    const point = evt.detail.intersection.point;
-                    if (point && videoEntity) {
-                        videoEntity.setAttribute('position', {
-                            x: point.x,
-                            y: point.y + 0.8, // Немного выше точки касания
-                            z: point.z
-                        });
-                        
-                        // Поворачиваем видео к пользователю
-                        const camera = document.querySelector('[camera]');
-                        if (camera) {
-                            const cameraPos = camera.getAttribute('position');
-                            const direction = {
-                                x: cameraPos.x - point.x,
-                                y: 0,
-                                z: cameraPos.z - point.z
-                            };
-                            
-                            // Вычисляем угол поворота
-                            const angle = Math.atan2(direction.x, direction.z) * (180 / Math.PI);
-                            videoEntity.setAttribute('rotation', {
-                                x: 0,
-                                y: angle,
-                                z: 0
-                            });
-                        }
-                        
-                        // Сохраняем позицию в мировых координатах
-                        videoWorldPosition = { x: point.x, y: point.y + 0.8, z: point.z };
-                        videoWorldRotation = { x: 0, y: angle, z: 0 };
-                        
-                        showMessage('✅ Видео размещено в комнате!', 'success');
-                    }
-                }
-            });
-        }
-        
-        // ========== ИНИЦИАЛИЗАЦИЯ ОТСЛЕЖИВАНИЯ РУК ==========
-        async function initHandTracking() {
-            console.log('✋ Инициализация отслеживания рук...');
-            
-            // Настраиваем canvas для отрисовки рук
-            handCanvas = document.getElementById('handCanvas');
-            handCtx = handCanvas.getContext('2d');
-            handCanvas.width = window.innerWidth;
-            handCanvas.height = window.innerHeight;
-            
-            // Создаем детектор рук
-            handDetector = new Hands({
-                locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-                }
-            });
-            
-            handDetector.setOptions({
-                maxNumHands: 1,
-                modelComplexity: 1,
-                minDetectionConfidence: 0.7,
-                minTrackingConfidence: 0.6
-            });
-            
-            handDetector.onResults(onHandResults);
-            
-            // Запускаем отслеживание с веб-камеры
-            const cameraVideo = document.createElement('video');
-            cameraVideo.style.display = 'none';
-            document.body.appendChild(cameraVideo);
+            // Обновляем статус
+            document.getElementById('arStatus').className = 'status-dot yellow';
+            document.getElementById('arStatusText').textContent = 'Инициализация...';
             
             try {
-                // Пытаемся получить доступ к задней камере
+                // Инициализируем Three.js сцену
+                await initThreeScene();
+                
+                // Загружаем видео
+                await loadVideoTexture();
+                
+                // Пытаемся запустить WebXR
+                await startWebXR();
+                
+                // Инициализируем отслеживание рук
+                await initHandTracking();
+                
+                // Скрываем загрузку через 2 секунды
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    document.getElementById('controlPanel').style.display = 'flex';
+                    document.getElementById('gestureHint').style.display = 'block';
+                    
+                    document.getElementById('arStatus').className = 'status-dot green';
+                    document.getElementById('arStatusText').textContent = 'AR активен';
+                    
+                    showMessage('AR камера активирована! Коснитесь экрана для размещения видео.', 'success');
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Ошибка запуска AR:', error);
+                document.getElementById('loadingText').textContent = 'Ошибка запуска AR';
+                document.getElementById('loadingSubtext').textContent = error.message;
+                
+                document.getElementById('arStatus').className = 'status-dot red';
+                document.getElementById('arStatusText').textContent = 'Ошибка AR';
+                
+                // Через 3 секунды возвращаем в меню
+                setTimeout(() => {
+                    goBackToMenu();
+                    showMessage('Не удалось запустить AR. Проверьте поддержку WebXR.', 'error');
+                }, 3000);
+            }
+        }
+        
+        // ========== ИНИЦИАЛИЗАЦИЯ THREE.JS СЦЕНЫ ==========
+        async function initThreeScene() {
+            console.log('🎨 Инициализация Three.js сцены...');
+            
+            const canvas = document.getElementById('arCanvas');
+            
+            // Создаем сцену
+            scene = new THREE.Scene();
+            scene.background = null;
+            
+            // Создаем камеру (значения по умолчанию, будут обновлены в WebXR)
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            scene.add(camera);
+            
+            // Создаем рендерер
+            renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.xr.enabled = true;
+            
+            // Добавляем свет
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+            
+            console.log('✅ Three.js сцена инициализирована');
+        }
+        
+        // ========== ЗАГРУЗКА ВИДЕО ТЕКСТУРЫ ==========
+        async function loadVideoTexture() {
+            console.log('🎥 Загрузка видео текстуры...');
+            
+            return new Promise((resolve, reject) => {
+                videoElement = document.createElement('video');
+                videoElement.src = currentVideoUrl;
+                videoElement.crossOrigin = 'anonymous';
+                videoElement.loop = true;
+                videoElement.muted = true;
+                videoElement.playsInline = true;
+                videoElement.setAttribute('webkit-playsinline', '');
+                
+                videoElement.addEventListener('loadedmetadata', () => {
+                    console.log('📐 Размеры видео:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+                    
+                    // Создаем текстуру из видео
+                    videoTexture = new THREE.VideoTexture(videoElement);
+                    videoTexture.minFilter = THREE.LinearFilter;
+                    videoTexture.magFilter = THREE.LinearFilter;
+                    videoTexture.format = THREE.RGBFormat;
+                    
+                    // Обновляем информацию о видео
+                    document.getElementById('currentVideoName').textContent = currentVideoName;
+                    
+                    console.log('✅ Видео текстура загружена');
+                    resolve();
+                });
+                
+                videoElement.addEventListener('error', (e) => {
+                    console.error('❌ Ошибка загрузки видео:', e);
+                    reject(new Error('Не удалось загрузить видео'));
+                });
+                
+                videoElement.load();
+            });
+        }
+        
+        // ========== ЗАПУСК WEBXR ==========
+        async function startWebXR() {
+            console.log('🌐 Запуск WebXR...');
+            
+            if (!navigator.xr) {
+                throw new Error('WebXR не поддерживается');
+            }
+            
+            try {
+                // Проверяем поддержку AR
+                const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (!isSupported) {
+                    throw new Error('AR не поддерживается');
+                }
+                
+                // Создаем сессию AR
+                const session = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['local', 'hit-test'],
+                    optionalFeatures: ['dom-overlay'],
+                    domOverlay: { root: document.body }
+                });
+                
+                arSession = session;
+                
+                // Подключаем сессию к рендереру
+                await renderer.xr.setSession(session);
+                
+                // Добавляем контроллеры для лучей
+                const controller = renderer.xr.getController(0);
+                scene.add(controller);
+                
+                // Запускаем анимацию
+                renderer.setAnimationLoop(animate);
+                
+                // Обработка завершения сессии
+                session.addEventListener('end', () => {
+                    console.log('🛑 WebXR сессия завершена');
+                    isARActive = false;
+                    renderer.setAnimationLoop(null);
+                });
+                
+                console.log('✅ WebXR сессия запущена');
+                isARActive = true;
+                
+            } catch (error) {
+                console.error('❌ Ошибка WebXR:', error);
+                
+                // Пытаемся использовать резервный режим (просто 3D с камерой устройства)
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Камера не доступна');
+                }
+                
+                showMessage('Используем камеру устройства (упрощенный режим)', 'warning');
+                return startDeviceCameraMode();
+            }
+        }
+        
+        // ========== РЕЗЕРВНЫЙ РЕЖИМ: КАМЕРА УСТРОЙСТВА ==========
+        async function startDeviceCameraMode() {
+            console.log('📱 Запуск режима камеры устройства...');
+            
+            try {
+                // Получаем поток с камеры (стараемся использовать заднюю)
                 const constraints = {
                     video: {
                         facingMode: { ideal: 'environment' },
@@ -778,39 +676,227 @@
                 };
                 
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // Создаем видео элемент для камеры
+                const cameraVideo = document.createElement('video');
                 cameraVideo.srcObject = stream;
+                cameraVideo.autoplay = true;
+                cameraVideo.playsInline = true;
+                
+                // Ждем готовности видео
+                await new Promise((resolve) => {
+                    cameraVideo.addEventListener('loadedmetadata', () => {
+                        cameraVideo.play();
+                        resolve();
+                    });
+                });
+                
+                // Создаем текстуру из камеры
+                const cameraTexture = new THREE.VideoTexture(cameraVideo);
+                cameraTexture.minFilter = THREE.LinearFilter;
+                cameraTexture.magFilter = THREE.LinearFilter;
+                
+                // Создаем фон из камеры
+                const cameraGeometry = new THREE.PlaneGeometry(10, 10);
+                const cameraMaterial = new THREE.MeshBasicMaterial({ 
+                    map: cameraTexture,
+                    transparent: true,
+                    opacity: 1
+                });
+                
+                const cameraBackground = new THREE.Mesh(cameraGeometry, cameraMaterial);
+                cameraBackground.position.z = -5;
+                scene.add(cameraBackground);
+                
+                // Настраиваем камеру
+                camera.position.set(0, 1.6, 0);
+                
+                // Запускаем анимацию
+                renderer.setAnimationLoop(animate);
+                
+                isARActive = true;
+                console.log('✅ Режим камеры устройства запущен');
+                
+            } catch (error) {
+                console.error('❌ Ошибка камеры устройства:', error);
+                throw new Error('Не удалось получить доступ к камере');
+            }
+        }
+        
+        // ========== РАЗМЕЩЕНИЕ ВИДЕО ПО КАСАНИЮ ==========
+        function placeVideoOnTap(event) {
+            if (!videoTexture || videoPlaced) return;
+            
+            console.log('📍 Размещение видео по касанию...');
+            
+            // Получаем координаты касания
+            const rect = document.getElementById('arCanvas').getBoundingClientRect();
+            const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            // Создаем луч из камеры
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+            
+            // Определяем направление луча
+            const direction = new THREE.Vector3(0, 0, -1);
+            direction.unproject(camera);
+            direction.sub(camera.position).normalize();
+            
+            // Вычисляем позицию для видео (на расстоянии 2 метра)
+            const distance = 2;
+            videoPosition = {
+                x: camera.position.x + direction.x * distance,
+                y: camera.position.y + direction.y * distance,
+                z: camera.position.z + direction.z * distance
+            };
+            
+            // Создаем или обновляем видео меш
+            createVideoMesh();
+            
+            videoPlaced = true;
+            document.getElementById('gestureHint').textContent = 'Используйте жесты для управления';
+            
+            showMessage('✅ Видео размещено!', 'success');
+        }
+        
+        // ========== СОЗДАНИЕ ВИДЕО МЕША ==========
+        function createVideoMesh() {
+            // Удаляем старый меш если есть
+            if (arVideoMesh) {
+                scene.remove(arVideoMesh);
+            }
+            
+            // Вычисляем размеры на основе оригинальных пропорций
+            const videoAspect = videoElement.videoWidth / videoElement.videoHeight;
+            const width = 1.6; // 1.6 метра ширины
+            const height = width / videoAspect;
+            
+            console.log(`📏 Размеры видео в AR: ${width.toFixed(2)}м x ${height.toFixed(2)}м`);
+            
+            // Создаем геометрию
+            const geometry = new THREE.PlaneGeometry(width, height);
+            
+            // Создаем материал с видео текстурой
+            const material = new THREE.MeshBasicMaterial({
+                map: videoTexture,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 1
+            });
+            
+            // Создаем меш
+            arVideoMesh = new THREE.Mesh(geometry, material);
+            
+            // Устанавливаем позицию и ориентацию
+            arVideoMesh.position.set(videoPosition.x, videoPosition.y, videoPosition.z);
+            
+            // Поворачиваем к камере
+            arVideoMesh.lookAt(camera.position);
+            
+            // Добавляем в сцену
+            scene.add(arVideoMesh);
+            
+            // Запускаем видео
+            videoElement.play().catch(e => {
+                console.log('Автовоспроизведение заблокировано');
+            });
+            
+            console.log('✅ Видео меш создан');
+        }
+        
+        // ========== АНИМАЦИЯ ==========
+        function animate() {
+            if (!isARActive) return;
+            
+            // Обновляем видео текстуру
+            if (videoTexture) {
+                videoTexture.needsUpdate = true;
+            }
+            
+            // Вращаем видео к камере (если размещено)
+            if (arVideoMesh && videoPlaced) {
+                arVideoMesh.lookAt(camera.position);
+            }
+            
+            // Рендерим сцену
+            renderer.render(scene, camera);
+        }
+        
+        // ========== ИНИЦИАЛИЗАЦИЯ ОТСЛЕЖИВАНИЯ РУК ==========
+        async function initHandTracking() {
+            console.log('✋ Инициализация отслеживания рук...');
+            
+            try {
+                // Настраиваем canvas для рук
+                handCanvas = document.getElementById('handCanvas');
+                handCtx = handCanvas.getContext('2d');
+                handCanvas.width = window.innerWidth;
+                handCanvas.height = window.innerHeight;
+                
+                // Создаем детектор рук
+                handDetector = new Hands({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                    }
+                });
+                
+                handDetector.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 0,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+                
+                handDetector.onResults(onHandResults);
+                
+                // Создаем видео элемент для MediaPipe
+                const handVideo = document.createElement('video');
+                handVideo.style.display = 'none';
+                document.body.appendChild(handVideo);
+                
+                // Получаем поток с камеры
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { ideal: 'user' }, // Передняя камера для жестов
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                });
+                
+                handVideo.srcObject = stream;
                 
                 // Запускаем обработку кадров
-                const camera = new Camera(cameraVideo, {
+                const handCamera = new Camera(handVideo, {
                     onFrame: async () => {
                         if (isARActive && handDetector) {
-                            await handDetector.send({ image: cameraVideo });
+                            await handDetector.send({ image: handVideo });
                         }
                     },
                     width: 640,
                     height: 480
                 });
                 
-                await camera.start();
-                console.log('✅ Отслеживание рук инициализировано с задней камерой');
-                document.getElementById('handStatus').className = 'status-dot green';
+                await handCamera.start();
+                console.log('✅ Отслеживание рук инициализировано');
                 
             } catch (error) {
-                console.error('❌ Ошибка доступа к камере:', error);
-                document.getElementById('handStatus').className = 'status-dot red';
-                document.getElementById('handStatus').nextElementSibling.textContent = 'Жесты: выкл';
+                console.error('❌ Ошибка инициализации отслеживания рук:', error);
+                showMessage('Отслеживание жестов не доступно', 'warning');
             }
         }
         
         // ========== ОБРАБОТКА РЕЗУЛЬТАТОВ ОТСЛЕЖИВАНИЯ РУК ==========
         function onHandResults(results) {
+            if (!handCtx || !isARActive) return;
+            
             // Очищаем canvas
             handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
             
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && videoEntity) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && arVideoMesh) {
                 const landmarks = results.multiHandLandmarks[0];
                 
-                // Отображаем руку для отладки
+                // Отображаем руку (опционально, для отладки)
                 drawHandSkeleton(landmarks);
                 
                 // Анализируем жесты
@@ -830,7 +916,7 @@
                 [17, 0]
             ];
             
-            handCtx.strokeStyle = '#00FF00';
+            handCtx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
             handCtx.lineWidth = 2;
             
             connections.forEach(([i, j]) => {
@@ -849,15 +935,17 @@
                 handCtx.arc(
                     landmark.x * handCanvas.width,
                     landmark.y * handCanvas.height,
-                    4, 0, Math.PI * 2
+                    3, 0, Math.PI * 2
                 );
-                handCtx.fillStyle = '#FF0000';
+                handCtx.fillStyle = 'rgba(255, 0, 0, 0.5)';
                 handCtx.fill();
             });
         }
         
         // ========== АНАЛИЗ ЖЕСТОВ РУКИ ==========
         function analyzeHandGestures(landmarks) {
+            if (!arVideoMesh || !videoElement) return;
+            
             const thumbTip = landmarks[4];
             const indexTip = landmarks[8];
             const middleTip = landmarks[12];
@@ -865,7 +953,7 @@
             const pinkyTip = landmarks[20];
             const wrist = landmarks[0];
             
-            // 1. Определяем щепотку (захват)
+            // 1. Определяем щепотку (захват и перемещение)
             const pinchDistance = Math.sqrt(
                 Math.pow(thumbTip.x - indexTip.x, 2) + 
                 Math.pow(thumbTip.y - indexTip.y, 2)
@@ -881,8 +969,8 @@
                 const screenX = wrist.x;
                 const screenY = wrist.y;
                 
-                // Обновляем позицию видео в мировых координатах
-                updateVideoWorldPosition(screenX, screenY);
+                // Обновляем позицию видео
+                updateVideoPosition(screenX, screenY);
                 
             } else {
                 if (isGrabbing) {
@@ -891,55 +979,40 @@
                 }
             }
             
-            // 2. Определяем открытую ладонь (пауза)
+            // 2. Определяем количество поднятых пальцев
             const fingersUp = countFingersUp(landmarks);
-            if (fingersUp >= 4 && videoElement) { // Все пальцы подняты
+            
+            // Открытая ладонь (4-5 пальцев) - пауза
+            if (fingersUp >= 4) {
                 if (!videoElement.paused) {
                     videoElement.pause();
                     showMessage('✋ Пауза', 'info');
                 }
             }
             
-            // 3. Определяем кулак (воспроизведение)
-            if (fingersUp <= 1 && videoElement) { // Все пальцы сжаты
+            // Кулак (0-1 палец) - воспроизведение
+            if (fingersUp <= 1) {
                 if (videoElement.paused) {
                     videoElement.play();
                     showMessage('✊ Воспроизведение', 'info');
                 }
             }
-            
-            // 4. V знак для управления громкостью
-            if (isVSign(landmarks) && videoElement) {
-                videoElement.volume = Math.min(1, videoElement.volume + 0.1);
-                showMessage('🔊 Громкость +', 'info');
-            }
-            
-            // 5. Опущенные пальцы для уменьшения громкости
-            if (isFingersDown(landmarks) && videoElement) {
-                videoElement.volume = Math.max(0, videoElement.volume - 0.1);
-                showMessage('🔉 Громкость -', 'info');
-            }
         }
         
-        // ========== ОБНОВЛЕНИЕ МИРОВОЙ ПОЗИЦИИ ВИДЕО ==========
-        function updateVideoWorldPosition(screenX, screenY) {
-            if (!videoEntity) return;
+        // ========== ОБНОВЛЕНИЕ ПОЗИЦИИ ВИДЕО ==========
+        function updateVideoPosition(screenX, screenY) {
+            if (!arVideoMesh) return;
             
-            // Преобразуем координаты экрана в мировые координаты
-            // Эта часть требует калибровки и может нуждаться в доработке
-            const worldX = (screenX - 0.5) * 4; // Масштабирование для AR
-            const worldY = (0.5 - screenY) * 3;
+            // Преобразуем координаты экрана в мировые
+            const worldX = (screenX - 0.5) * 3;
+            const worldY = (0.5 - screenY) * 2;
             
-            // Обновляем мировую позицию
-            videoWorldPosition.x = worldX;
-            videoWorldPosition.y = worldY + 1; // Компенсируем высоту
+            // Обновляем позицию (относительно камеры)
+            videoPosition.x = camera.position.x + worldX;
+            videoPosition.y = camera.position.y + worldY;
+            videoPosition.z = camera.position.z - 2;
             
-            // Применяем новую позицию к видео
-            videoEntity.setAttribute('position', {
-                x: videoWorldPosition.x,
-                y: videoWorldPosition.y,
-                z: videoWorldPosition.z
-            });
+            arVideoMesh.position.set(videoPosition.x, videoPosition.y, videoPosition.z);
         }
         
         // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ЖЕСТОВ ==========
@@ -955,32 +1028,6 @@
             }
             
             return count;
-        }
-        
-        function isVSign(landmarks) {
-            const indexTip = landmarks[8];
-            const middleTip = landmarks[12];
-            const ringTip = landmarks[16];
-            const pinkyTip = landmarks[20];
-            
-            return (indexTip.y < landmarks[6].y) &&
-                   (middleTip.y < landmarks[10].y) &&
-                   (ringTip.y > landmarks[14].y) &&
-                   (pinkyTip.y > landmarks[18].y);
-        }
-        
-        function isFingersDown(landmarks) {
-            const fingerTips = [8, 12, 16, 20];
-            const fingerMCPs = [5, 9, 13, 17];
-            let count = 0;
-            
-            for (let i = 0; i < 4; i++) {
-                if (landmarks[fingerTips[i]].y > landmarks[fingerMCPs[i]].y) {
-                    count++;
-                }
-            }
-            
-            return count >= 3;
         }
         
         // ========== УПРАВЛЕНИЕ ВИДЕО ==========
@@ -1008,28 +1055,21 @@
         }
         
         function deleteVideo() {
-            if (confirm('Удалить видео из комнаты?')) {
-                if (videoEntity) {
-                    videoEntity.parentNode.removeChild(videoEntity);
-                    videoEntity = null;
-                    videoPlaced = false;
-                    showMessage('🗑️ Видео удалено', 'info');
-                }
+            if (arVideoMesh) {
+                scene.remove(arVideoMesh);
+                arVideoMesh = null;
+                videoPlaced = false;
+                showMessage('🗑️ Видео удалено', 'info');
+                document.getElementById('gestureHint').textContent = 'Коснитесь экрана для размещения видео';
             }
         }
         
         function resetVideoPosition() {
-            if (!videoEntity) return;
+            if (!arVideoMesh) return;
             
             // Сбрасываем к позиции по умолчанию
-            videoWorldPosition = { x: 0, y: 1.6, z: -2 };
-            videoWorldRotation = { x: 0, y: 0, z: 0 };
-            videoScale = 1;
-            
-            videoEntity.setAttribute('position', videoWorldPosition);
-            videoEntity.setAttribute('rotation', videoWorldRotation);
-            videoEntity.setAttribute('scale', '1 1 1');
-            
+            videoPosition = { x: 0, y: 0, z: -2 };
+            arVideoMesh.position.set(videoPosition.x, videoPosition.y, videoPosition.z);
             showMessage('🔄 Позиция сброшена', 'info');
         }
         
@@ -1045,19 +1085,51 @@
                 
                 if (screenId === 'arScreen') {
                     isARActive = true;
-                    document.getElementById('arStatus').className = 'status-dot green';
                 } else {
-                    isARActive = false;
-                    if (handDetector) {
-                        // Останавливаем отслеживание рук
-                        handDetector.close();
-                        handDetector = null;
-                    }
+                    stopARExperience();
                 }
             }
         }
         
+        function stopARExperience() {
+            console.log('🛑 Остановка AR опыта...');
+            
+            isARActive = false;
+            
+            // Останавливаем анимацию
+            if (renderer) {
+                renderer.setAnimationLoop(null);
+            }
+            
+            // Останавливаем видео
+            if (videoElement) {
+                videoElement.pause();
+            }
+            
+            // Закрываем сессию WebXR
+            if (arSession) {
+                arSession.end().catch(() => {});
+                arSession = null;
+            }
+            
+            // Останавливаем отслеживание рук
+            if (handDetector) {
+                handDetector.close();
+                handDetector = null;
+            }
+            
+            // Очищаем canvas для рук
+            if (handCtx) {
+                handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
+            }
+            
+            // Скрываем панель управления
+            document.getElementById('controlPanel').style.display = 'none';
+            document.getElementById('gestureHint').style.display = 'none';
+        }
+        
         function goBackToMenu() {
+            stopARExperience();
             switchScreen('mainScreen');
         }
         
@@ -1088,7 +1160,7 @@
                 return;
             }
             
-            // Извлекаем ID видео из различных форматов YouTube URL
+            // Извлекаем ID видео
             const videoId = extractYouTubeId(url);
             if (!videoId) {
                 showMessage('❌ Неверная ссылка YouTube', 'error');
@@ -1096,7 +1168,7 @@
             }
             
             // Создаем embed URL
-            currentVideoUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0`;
+            currentVideoUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0`;
             currentVideoName = 'YouTube видео';
             document.getElementById('confirmBtn').disabled = false;
             
@@ -1106,6 +1178,26 @@
         function confirmVideoSelection() {
             hideVideoModal();
             showMessage('✅ Видео готово к использованию в AR!', 'success');
+            
+            // Если мы в AR режиме, перезагружаем видео
+            if (isARActive && videoElement) {
+                videoElement.src = currentVideoUrl;
+                videoElement.load();
+            }
+        }
+        
+        // ========== ОБРАБОТКА ИЗМЕНЕНИЯ РАЗМЕРА ОКНА ==========
+        function onWindowResize() {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            if (handCanvas) {
+                handCanvas.width = window.innerWidth;
+                handCanvas.height = window.innerHeight;
+            }
         }
         
         // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
@@ -1157,14 +1249,6 @@
             }, 3000);
         }
         
-        // ========== ОБРАБОТКА ИЗМЕНЕНИЯ РАЗМЕРА ОКНА ==========
-        window.addEventListener('resize', function() {
-            if (handCanvas) {
-                handCanvas.width = window.innerWidth;
-                handCanvas.height = window.innerHeight;
-            }
-        });
-        
         // ========== ДЕБАГ ==========
         window.debugInfo = function() {
             console.log('=== ДЕБАГ ИНФОРМАЦИЯ ===');
@@ -1173,9 +1257,9 @@
             console.log('AR активен:', isARActive);
             console.log('Видео размещено:', videoPlaced);
             console.log('Видео элемент:', videoElement);
-            console.log('Видео entity:', videoEntity);
-            console.log('Мировая позиция:', videoWorldPosition);
-            console.log('Захват руки:', isGrabbing);
+            console.log('Видео меш:', arVideoMesh);
+            console.log('WebXR сессия:', arSession);
+            console.log('Отслеживание рук:', handDetector ? 'активно' : 'не активно');
         };
     </script>
 </body>
