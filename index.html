@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Hand Control Video</title>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: black;
+  font-family: sans-serif;
+}
+
+#videoBox {
+  position: absolute;
+  top: 200px;
+  left: 200px;
+  width: 320px;
+  cursor: grab;
+}
+
+video {
+  width: 100%;
+  border-radius: 12px;
+}
+
+#info {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  background: rgba(0,0,0,0.6);
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+</style>
+</head>
+
+<body>
+
+<video id="inputVideo" autoplay muted playsinline style="display:none"></video>
+<canvas id="output"></canvas>
+
+<div id="videoBox">
+  <video id="video" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" loop></video>
+</div>
+
+<div id="info">
+✋ ладонь — пауза | ✊ кулак — play | двигай рукой
+</div>
+
+<script>
+const video = document.getElementById("video");
+const box = document.getElementById("videoBox");
+const canvas = document.getElementById("output");
+const ctx = canvas.getContext("2d");
+
+let grabbing = false;
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const hands = new Hands({
+  locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+});
+
+hands.setOptions({
+  maxNumHands: 1,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.7,
+  minTrackingConfidence: 0.7
+});
+
+hands.onResults(results => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (results.multiHandLandmarks.length > 0) {
+    const lm = results.multiHandLandmarks[0];
+
+    drawConnectors(ctx, lm, HAND_CONNECTIONS, {color:"#00FF00"});
+    drawLandmarks(ctx, lm, {color:"#FF0000"});
+
+    const palm = lm[0];
+    const thumb = lm[4];
+    const index = lm[8];
+
+    const dx = thumb.x - index.x;
+    const dy = thumb.y - index.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    const x = palm.x * window.innerWidth;
+    const y = palm.y * window.innerHeight;
+
+    if (dist < 0.05) {
+      video.play();
+      grabbing = true;
+    } else {
+      video.pause();
+      grabbing = false;
+    }
+
+    if (grabbing) {
+      box.style.left = (x - box.offsetWidth / 2) + "px";
+      box.style.top = (y - box.offsetHeight / 2) + "px";
+    }
+  }
+});
+
+const camera = new Camera(document.getElementById("inputVideo"), {
+  onFrame: async () => {
+    await hands.send({image: inputVideo});
+  },
+  width: 640,
+  height: 480
+});
+
+camera.start();
+</script>
+
+</body>
+</html>
